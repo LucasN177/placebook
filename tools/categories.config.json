@@ -1,0 +1,20 @@
+{
+  "region": {
+    "name": "Europa",
+    "bbox": { "south": 27.0, "west": -32.0, "north": 72.0, "east": 45.0 },
+    "countries": [
+      "AD", "AL", "AT", "BA", "BE", "BG", "BY", "CH", "CY", "CZ", "DE", "DK", "EE", "ES", "FI",
+      "FR", "GB", "GR", "HR", "HU", "IE", "IS", "IT", "LI", "LT", "LU", "LV", "MC", "MD", "ME",
+      "MK", "MT", "NL", "NO", "PL", "PT", "RO", "RS", "SE", "SI", "SK", "SM", "UA", "VA", "XK"
+    ]
+  },
+  "categories": [
+    {
+      "id": "mcdonalds",
+      "name": "McDonald's",
+      "icon": "fastfood",
+      "color": "#DA291C",
+      "filter": "nwr[\"brand:wikidata\"=\"Q38076\"][\"amenity\"=\"fast_food\"]"
+    }
+  ]
+}

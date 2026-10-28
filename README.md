@@ -6,7 +6,7 @@ ganz Europa und lässt sich bis auf Stadt- und Straßenebene zoomen.
 
 **Live:** https://lucasn177.github.io/placebook/
 
-> Status: in Planung – siehe [Implementationsplan](docs/IMPLEMENTATION_PLAN.md)
+> Status: in Entwicklung – Karte und Abhaken funktionieren, siehe [Implementationsplan](docs/IMPLEMENTATION_PLAN.md)
 
 ## Features
 
@@ -53,6 +53,9 @@ dotnet watch --project src/Placebook
 
 Die App läuft dann unter `http://localhost:5118` bzw. `https://localhost:7280`.
 
+**Rider:** Im Ordner [`.run/`](.run) liegen geteilte Run-Configurations, die Rider automatisch anzeigt:
+„Placebook“ startet die App (Profil `https`, mit Debugger) und „FetchPlaces (alle Kategorien)“ erzeugt die Ortsdaten neu.
+
 Tests:
 
 ```bash
@@ -68,7 +71,12 @@ OpenStreetMap über die Overpass API erzeugt:
 dotnet run --project tools/FetchPlaces -- --category mcdonalds
 ```
 
-Zusätzlich aktualisiert ein GitHub-Workflow die Daten monatlich und öffnet einen Pull Request.
+Die Abfrage für ganz Europa dauert einige Minuten. Die Rohantwort wird im Temp-Ordner zwischengespeichert;
+mit `--from-cache` lässt sie sich erneut auswerten, ohne Overpass neu abzufragen.
+
+Zusätzlich aktualisiert der Workflow [`refresh-data.yml`](.github/workflows/refresh-data.yml) die Daten monatlich
+und öffnet einen Pull Request. Dafür muss unter *Settings → Actions → General* die Option
+„Allow GitHub Actions to create and approve pull requests“ aktiv sein.
 
 ### Neue Kategorie hinzufügen
 

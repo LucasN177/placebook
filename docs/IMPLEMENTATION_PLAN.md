@@ -259,33 +259,33 @@ jobs:
 - [x] MudBlazor einbinden (`MudThemeProvider`, `MudPopoverProvider`, `MudDialogProvider`, `MudSnackbarProvider`)
 - [x] `.gitignore` (inkl. `.idea/`)
 - [x] `deploy.yml`, `404.html`-Fallback, Base-Pfad-Anpassung
-- [ ] Pages-Einstellungen (Source: GitHub Actions) → leere App läuft unter `lucasn177.github.io/placebook`
+- [x] Pages-Einstellungen (Source: GitHub Actions) → leere App läuft unter `lucasn177.github.io/placebook`
 - **Done, wenn:** Push auf `main` deployt automatisch, Deep-Link-Reload funktioniert.
 
 ### M1 – Daten (½–1 Tag)
-- [ ] `tools/FetchPlaces` + `categories.config.json`
-- [ ] `mcdonalds.json` für Europa generieren und committen
-- [ ] `CategoryService`: lädt `categories.json` und lazy die Ortsdatei der aktiven Kategorie (Cache im Speicher)
+- [x] `tools/FetchPlaces` + `categories.config.json`
+- [x] `mcdonalds.json` für Europa generieren und committen (8.783 Orte, 37 Länder, 279 KB gzip)
+- [x] `CategoryService`: lädt `categories.json` und lazy die Ortsdatei der aktiven Kategorie (Cache im Speicher)
 - **Done, wenn:** Unit-Test lädt/deserialisiert die echte Datei, IDs sind eindeutig.
 
 ### M2 – Karte (1–2 Tage)
-- [ ] Leaflet + markercluster nach `wwwroot/lib` legen, `map.js` als ES-Modul
-- [ ] `LeafletMap.razor`: `init`, `setMarkers(places, visitedIds)`, `setVisited(id, bool)`, `flyTo`, Marker-Klick → `DotNetObjectReference` Callback
-- [ ] Kartenausschnitt (Zentrum/Zoom) in localStorage merken
+- [x] Leaflet + markercluster nach `wwwroot/lib` legen, `map.js` als ES-Modul
+- [x] `LeafletMap.razor`: `init`, `setMarkers(places, visitedIds)`, `setVisited(id, bool)`, `flyTo`, Marker-Klick → `DotNetObjectReference` Callback
+- [x] Kartenausschnitt (Zentrum/Zoom) in localStorage merken
 - **Done, wenn:** alle Filialen performant angezeigt werden (< 1 s Render), Klick öffnet Drawer.
 
 ### M3 – Besucht markieren (1 Tag)
-- [ ] `VisitService` (laden, speichern, Event `VisitsChanged`)
-- [ ] Detail-Drawer mit Toggle, Datum (MudDatePicker), Notiz
-- [ ] Fortschrittsanzeige + Filter alle/besucht/offen
+- [x] `VisitService` (laden, speichern, Event `VisitsChanged`)
+- [x] Detail-Drawer mit Toggle, Datum (MudDatePicker), Notiz
+- [x] Fortschrittsanzeige + Filter alle/besucht/offen
 - **Done, wenn:** Status überlebt Reload, Marker färbt sich sofort um.
 
 ### M4 – Komfort & Release (1 Tag)
 - [ ] Export/Import (Download via JS-Blob, Upload via `MudFileUpload`), Import mit Merge-Option
 - [ ] Geolocation + „nächste offene Filiale“
 - [ ] Dark Mode, responsive Layout (mobil: Drawer von unten)
-- [ ] OSM-Attribution sichtbar, Impressum/Datenquelle in Settings
-- [ ] `refresh-data.yml`
+- [x] OSM-Attribution sichtbar, Datenquelle in Settings
+- [x] `refresh-data.yml`
 - **Done, wenn:** v1.0 getaggt, auf dem Handy benutzbar.
 
 ### M5+ – Backlog (siehe Abschnitt 5)
@@ -307,6 +307,7 @@ jobs:
 | Dateigröße (Europa ≈ 10.000 Orte, weltweit ≈ 40.000) | Europa passt in eine Datei; bei weltweit Aufteilung pro Region (`places/mcdonalds/eu.json`) |
 | Performance bei ~10.000 Markern | Leaflet.markercluster mit `chunkedLoading`, `circleMarker` auf Canvas-Renderer |
 | Erste Ladezeit Blazor WASM (~2–4 MB) | AOT nicht nötig; Trimming aktiv, Ladeanimation in `index.html`, Brotli/gzip durch Pages |
+| Langsames JSON-Deserialisieren in WASM (Reflection: ≈ 12 s für 8.800 Orte) | **Umgesetzt:** System.Text.Json Source Generator (`PlacebookJsonContext`) → ≈ 0,5 s; Marker als primitive Arrays an JS |
 | OSM-Tile-Nutzungsrichtlinie | Für privates Projekt ok; bei mehr Traffic auf anderen Anbieter (z. B. MapTiler, Stadia) mit Key wechseln |
 | Datenverlust (localStorage gelöscht / anderes Gerät) | Export/Import prominent anbieten, später optional Gist-Sync |
 | Unvollständige OSM-Daten | Hinweis in der App; fehlende Filialen kann man in OSM selbst ergänzen |

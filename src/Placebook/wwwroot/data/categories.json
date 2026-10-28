@@ -1,0 +1,11 @@
+[
+  {
+    "id": "mcdonalds",
+    "name": "McDonald's",
+    "icon": "fastfood",
+    "color": "#DA291C",
+    "file": "places/mcdonalds.json",
+    "count": 8783,
+    "updatedAt": "2026-10-28"
+  }
+]
