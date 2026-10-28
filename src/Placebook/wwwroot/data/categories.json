@@ -9,6 +9,15 @@
     "updatedAt": "2026-10-28"
   },
   {
+    "id": "burgerking",
+    "name": "Burger King",
+    "icon": "lunch_dining",
+    "color": "#F5821F",
+    "file": "places/burgerking.json",
+    "count": 4318,
+    "updatedAt": "2026-10-28"
+  },
+  {
     "id": "ikea",
     "name": "IKEA",
     "icon": "chair",

@@ -31,12 +31,24 @@ using var http = new HttpClient { Timeout = TimeSpan.FromMinutes(20) };
 http.DefaultRequestHeaders.UserAgent.ParseAdd("Placebook-FetchPlaces/1.0 (+https://github.com/LucasN177/placebook)");
 var overpass = new OverpassClient(http);
 
-var index = LoadIndex(Path.Combine(dataDir, "categories.json"));
+var indexPath = Path.Combine(dataDir, "categories.json");
+var failed = new List<string>();
 
 foreach (var category in categories)
 {
     Console.WriteLine($"[{category.Id}] Frage Overpass ab …");
-    var places = await overpass.FetchPlacesAsync(category, config.Region, args.Contains("--from-cache"));
+    List<Place> places;
+    try
+    {
+        places = await overpass.FetchPlacesAsync(category, config.Region, args.Contains("--from-cache"));
+    }
+    catch (InvalidOperationException ex)
+    {
+        // Eine fehlgeschlagene Kategorie soll die übrigen nicht verhindern
+        Console.Error.WriteLine($"[{category.Id}] übersprungen: {ex.Message}");
+        failed.Add(category.Id);
+        continue;
+    }
     Console.WriteLine($"[{category.Id}] {places.Count} Orte in {places.Select(p => p.Cc).Distinct().Count()} Ländern");
 
     var file = $"places/{category.Id}.json";
@@ -44,16 +56,22 @@ foreach (var category in categories)
     Directory.CreateDirectory(Path.GetDirectoryName(path)!);
     File.WriteAllText(path, PlacesWriter.Write(category, places, DateTimeOffset.UtcNow), new UTF8Encoding(false));
 
+    // Index direkt vor dem Schreiben neu einlesen: Abfragen dauern Minuten, parallel laufende
+    // Aufrufe für andere Kategorien sollen sich nicht gegenseitig überschreiben.
+    var index = LoadIndex(indexPath);
     index.RemoveAll(c => c.Id == category.Id);
     index.Add(new CategoryIndexEntry(category.Id, category.Name, category.Icon, category.Color, file,
         places.Count, DateOnly.FromDateTime(DateTime.UtcNow)));
+    // Reihenfolge aus der Config beibehalten
+    index = index.OrderBy(c => config.Categories.FindIndex(x => x.Id == c.Id)).ToList();
+    File.WriteAllText(indexPath, JsonSerializer.Serialize(index, Json.WriteIndented) + "\n", new UTF8Encoding(false));
 }
 
-// Reihenfolge aus der Config beibehalten
-index = index.OrderBy(c => config.Categories.FindIndex(x => x.Id == c.Id)).ToList();
-File.WriteAllText(Path.Combine(dataDir, "categories.json"),
-    JsonSerializer.Serialize(index, Json.WriteIndented) + "\n", new UTF8Encoding(false));
-
+if (failed.Count > 0)
+{
+    Console.Error.WriteLine($"Fehlgeschlagen: {string.Join(", ", failed)}");
+    return 1;
+}
 Console.WriteLine("Fertig.");
 return 0;
 
