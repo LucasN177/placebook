@@ -1,0 +1,151 @@
+@page "/stats"
+@using System.Globalization
+@implements IDisposable
+@inject CategoryState CategoryState
+@inject VisitService Visits
+
+<PageTitle>Statistik – Placebook</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="pt-4 pb-8">
+    @if (Category is null)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else
+    {
+        <MudGrid Spacing="2" Class="mb-4">
+            <MudItem xs="12" sm="4">
+                <MudPaper Class="pa-4 pb-stat" Elevation="1">
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">@Category.Name besucht</MudText>
+                    <MudText Typo="Typo.h4"><b>@_visitedTotal.ToString("N0")</b></MudText>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                        von @CategoryState.Places.Count.ToString("N0") (@FormatPercent(_percentTotal))
+                    </MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="6" sm="4">
+                <MudPaper Class="pa-4 pb-stat" Elevation="1">
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">Länder</MudText>
+                    <MudText Typo="Typo.h4"><b>@_countries.Count(c => c.Visited > 0)</b></MudText>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">von @_countries.Count</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="6" sm="4">
+                <MudPaper Class="pa-4 pb-stat" Elevation="1">
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">Letzte 12 Monate</MudText>
+                    <MudText Typo="Typo.h4"><b>@_months.Sum(m => m.Count)</b></MudText>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">Besuche mit Datum</MudText>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+        <MudPaper Class="pa-4 mb-4" Elevation="1">
+            <MudText Typo="Typo.h6">Besuche pro Monat</MudText>
+            <div class="pb-bars" role="img" aria-label="@MonthsAriaLabel">
+                @foreach (var month in _months)
+                {
+                    var label = $"{month.Month.ToString("MMMM yyyy", CultureInfo.CurrentCulture)}: {month.Count} {(month.Count == 1 ? "Besuch" : "Besuche")}";
+                    <div class="pb-bar-col" title="@label">
+                        <div class="pb-bar-value">@(month.Count > 0 && month.Count == _maxMonth ? month.Count : "")</div>
+                        <div class="pb-bar-track">
+                            <div class="pb-bar" style="height:@BarHeight(month.Count)"></div>
+                        </div>
+                        <div class="pb-bar-label">@month.Month.ToString("MMM", CultureInfo.CurrentCulture)</div>
+                    </div>
+                }
+            </div>
+            @if (_undated > 0)
+            {
+                <MudText Typo="Typo.body2" Class="mud-text-secondary mt-2">
+                    @_undated @(_undated == 1 ? "Besuch hat" : "Besuche haben") kein Datum und @(_undated == 1 ? "fehlt" : "fehlen") hier.
+                </MudText>
+            }
+        </MudPaper>
+
+        <MudPaper Class="pa-4" Elevation="1">
+            <MudText Typo="Typo.h6" GutterBottom="true">Nach Land</MudText>
+            <MudSimpleTable Dense="true" Hover="true" Elevation="0">
+                <thead>
+                    <tr>
+                        <th>Land</th>
+                        <th style="text-align:right">Besucht</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var country in _countries)
+                    {
+                        <tr>
+                            <td style="width:100%">
+                                <div>@Countries.Name(country.CountryCode)</div>
+                                <MudProgressLinear Value="country.Percent" Color="Color.Primary" Rounded="true" Size="Size.Small"
+                                                   Class="mt-1" aria-label="@($"{FormatPercent(country.Percent)} besucht")" />
+                            </td>
+                            <td style="text-align:right; white-space:nowrap">
+                                <div>@country.Visited.ToString("N0") / @country.Total.ToString("N0")</div>
+                                <div class="mud-text-secondary" style="font-size:12px">@FormatPercent(country.Percent)</div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </MudPaper>
+    }
+</MudContainer>
+
+@code {
+    private List<CountryStats> _countries = [];
+    private List<MonthStats> _months = [];
+    private int _maxMonth;
+    private int _undated;
+    private int _visitedTotal;
+    private double _percentTotal;
+
+    private Category? Category => CategoryState.Current;
+
+    private string MonthsAriaLabel =>
+        "Besuche pro Monat: " + string.Join(", ", _months.Select(m => $"{m.Month:MMM yy} {m.Count}"));
+
+    protected override async Task OnInitializedAsync()
+    {
+        Visits.Changed += OnDataChanged;
+        CategoryState.Changed += OnDataChanged;
+        await Visits.EnsureLoadedAsync();
+        await CategoryState.EnsureLoadedAsync();
+        Refresh();
+    }
+
+    private void Refresh()
+    {
+        if (Category is null) return;
+        // Nur Besuche von Orten, die es in den aktuellen Daten noch gibt
+        var visits = Visits.GetVisits(Category.Id)
+            .Where(v => CategoryState.PlacesById.ContainsKey(v.Key))
+            .Select(v => v.Value)
+            .ToList();
+
+        _countries = Stats.ByCountry(CategoryState.Places, id => Visits.IsVisited(Category.Id, id));
+        _months = Stats.ByMonth(visits, DateOnly.FromDateTime(DateTime.Today));
+        _maxMonth = _months.Max(m => m.Count);
+        _undated = visits.Count(v => v.VisitedAt is null);
+        _visitedTotal = visits.Count;
+        _percentTotal = CategoryState.Places.Count == 0 ? 0 : 100.0 * _visitedTotal / CategoryState.Places.Count;
+    }
+
+    private string BarHeight(int count) =>
+        _maxMonth == 0 ? "0" : string.Create(CultureInfo.InvariantCulture, $"{100.0 * count / _maxMonth:0.#}%");
+
+    private static string FormatPercent(double percent) =>
+        percent.ToString(percent is > 0 and < 1 ? "0.00" : "0.#") + " %";
+
+    private void OnDataChanged() => InvokeAsync(() =>
+    {
+        Refresh();
+        StateHasChanged();
+    });
+
+    public void Dispose()
+    {
+        Visits.Changed -= OnDataChanged;
+        CategoryState.Changed -= OnDataChanged;
+    }
+}

@@ -15,6 +15,20 @@
       "icon": "fastfood",
       "color": "#DA291C",
       "filter": "nwr[\"brand:wikidata\"=\"Q38076\"][\"amenity\"=\"fast_food\"]"
+    },
+    {
+      "id": "burgerking",
+      "name": "Burger King",
+      "icon": "lunch_dining",
+      "color": "#F5821F",
+      "filter": "nwr[\"brand:wikidata\"=\"Q177054\"][\"amenity\"=\"fast_food\"]"
+    },
+    {
+      "id": "ikea",
+      "name": "IKEA",
+      "icon": "chair",
+      "color": "#0058A3",
+      "filter": "nwr[\"brand:wikidata\"=\"Q54078\"][\"shop\"=\"furniture\"]"
     }
   ]
 }

@@ -1,22 +1,24 @@
 # 📍 Placebook
 
-Sammle Orte! Placebook zeigt dir auf einer Karte alle Orte einer Kategorie – zum Start alle
-**McDonald's-Filialen in Europa** – und du hakst ab, wo du schon warst. Die Karte startet mit
+Sammle Orte! Placebook zeigt dir auf einer Karte alle Orte einer Kategorie – z. B. alle
+**McDonald's-Filialen oder IKEA-Häuser in Europa** – und du hakst ab, wo du schon warst. Die Karte startet mit
 ganz Europa und lässt sich bis auf Stadt- und Straßenebene zoomen.
 
 **Live:** https://lucasn177.github.io/placebook/
 
-> Status: Meilensteine M0–M4 umgesetzt (Karte, Abhaken, Standort, Export/Import, Mobil), siehe [Implementationsplan](docs/IMPLEMENTATION_PLAN.md)
+> Status: Meilensteine M0–M5 umgesetzt (Karte, Liste, Statistik, Standort, Export/Import, PWA), siehe [Implementationsplan](docs/IMPLEMENTATION_PLAN.md)
 
 ## Features
 
 - 🗺️ Interaktive Karte (Leaflet + OpenStreetMap) mit Marker-Clustering
 - ✅ Orte als besucht markieren – mit Datum und Notiz
-- 🗂️ Kategorien (McDonald's, weitere folgen)
-- 📊 Fortschritt: „123 von 9.800 besucht“ – gesamt und pro Land
+- 🗂️ Kategorien: McDonald's, Burger King, IKEA – die App übernimmt die Farbe der gewählten Kategorie
+- 🔎 Listenansicht mit Suche (Stadt, PLZ, Straße, Land) und Sortierung nach Ort, Land oder Entfernung
+- 📊 Statistik: Fortschritt gesamt und pro Land, Besuche pro Monat
 - 📍 Eigener Standort & nächster noch nicht besuchter Ort
 - 💾 Alles bleibt lokal im Browser – Export/Import als JSON-Datei
 - 🌙 Light/Dark-Mode, mobilfreundlich
+- 📲 Installierbar als App (PWA), App und Ortsdaten funktionieren offline (Kartenkacheln brauchen Internet)
 
 ## Tech-Stack
 
@@ -37,7 +39,9 @@ Es gibt kein Backend und keine Laufzeit-API-Aufrufe für Ortsdaten – alles wir
 src/Placebook/              Blazor WASM App
   wwwroot/data/             Ortsdaten (categories.json + places/<kategorie>.json)
   wwwroot/js/map.js         Leaflet-Interop
+  wwwroot/service-worker.published.js   Offline-Cache (PWA)
 tools/FetchPlaces/          Tool zum Erzeugen der Ortsdaten aus OSM
+tools/generate-icons.mjs    Erzeugt die App-Icons (node tools/generate-icons.mjs)
 tests/Placebook.Tests/      Unit- und Komponententests
 docs/                       Planung & Doku
 .github/workflows/          Deploy & Daten-Refresh

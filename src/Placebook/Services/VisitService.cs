@@ -31,6 +31,9 @@ public sealed class VisitService(IJSRuntime js)
     public IReadOnlyCollection<string> GetVisitedIds(string categoryId) =>
         _store.Visits.TryGetValue(categoryId, out var visits) ? visits.Keys : [];
 
+    public IReadOnlyDictionary<string, Visit> GetVisits(string categoryId) =>
+        _store.Visits.TryGetValue(categoryId, out var visits) ? visits : new Dictionary<string, Visit>();
+
     public async Task SetVisitAsync(string categoryId, string placeId, Visit visit)
     {
         if (!_store.Visits.TryGetValue(categoryId, out var visits))

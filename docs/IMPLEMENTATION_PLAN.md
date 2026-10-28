@@ -196,10 +196,11 @@ Der Workflow `refresh-data.yml` führt das monatlich aus und öffnet bei Änderu
 - Light/Dark-Mode
 
 ### Danach (Backlog)
-- Listenansicht mit Suche (Stadt, PLZ) und Sortierung nach Entfernung
-- Statistik-Seite: pro Land/Stadt (MudBlazor Charts)
-- PWA (offline nutzbar, installierbar) – Blazor-Template bringt Service Worker mit
-- Weitere Kategorien; bei weltweiten Daten Aufteilung der JSON pro Region
+- ✅ Listenansicht mit Suche (Stadt, PLZ, Straße, Land) und Sortierung nach Ort, Land, Entfernung
+- ✅ Statistik-Seite: Kennzahlen, Besuche pro Monat, Fortschritt pro Land
+- ✅ PWA (offline nutzbar, installierbar) – Service Worker aus dem Blazor-Template, angepasst für den Unterpfad
+- ✅ Weitere Kategorien: Burger King, IKEA; Kategorie-Auswahl in der AppBar, App-Farbe folgt der Kategorie
+- Bei weltweiten Daten Aufteilung der JSON pro Region
 - Optionaler Sync über GitHub Gist (Personal Access Token im Browser) – bewusst nicht im MVP
 - Teilen-Link mit komprimiertem Besucht-Status im URL-Fragment (`#…`)
 
@@ -288,7 +289,10 @@ jobs:
 - [x] `refresh-data.yml`
 - **Done, wenn:** v1.0 getaggt (✔ 2026-10-28), auf dem Handy benutzbar.
 
-### M5+ – Backlog (siehe Abschnitt 5)
+### M5 – Backlog Teil 1 ✔
+Liste, Statistik, PWA und weitere Kategorien umgesetzt (siehe Abschnitt 5).
+
+### M6+ – restliches Backlog (siehe Abschnitt 5)
 
 ---
 

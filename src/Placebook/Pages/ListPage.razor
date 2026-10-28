@@ -1,0 +1,154 @@
+@page "/list"
+@implements IDisposable
+@inject CategoryState CategoryState
+@inject VisitService Visits
+@inject BrowserService Browser
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Liste – Placebook</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="pt-4 pb-8">
+    @if (Category is null)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else
+    {
+        <MudPaper Class="pa-3 mb-3 pb-list-header" Elevation="1">
+            <MudStack Spacing="2">
+                <MudTextField T="string" Value="_search" ValueChanged="OnSearchChanged" Immediate="true" DebounceInterval="250"
+                              Placeholder="Suche nach Stadt, PLZ, Straße oder Land" Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search" Variant="Variant.Outlined" Margin="Margin.Dense"
+                              Clearable="true" />
+                <MudStack Row="true" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap" Spacing="2">
+                    <MudChipSet T="VisitFilter" SelectedValue="_filter" SelectedValueChanged="OnFilterChanged"
+                                SelectionMode="SelectionMode.SingleSelection" CheckMark="false" Size="Size.Small">
+                        <MudChip Value="VisitFilter.All" Text="Alle" SelectedColor="Color.Primary" />
+                        <MudChip Value="VisitFilter.Visited" Text="Besucht" SelectedColor="Color.Primary" />
+                        <MudChip Value="VisitFilter.Open" Text="Offen" SelectedColor="Color.Primary" />
+                    </MudChipSet>
+                    <MudSpacer />
+                    <MudSelect T="PlaceSort" Value="_sort" ValueChanged="OnSortChangedAsync" Label="Sortierung" Dense="true"
+                               Variant="Variant.Outlined" Margin="Margin.Dense" Style="min-width:180px; max-width:220px">
+                        <MudSelectItem Value="PlaceSort.City">Ort (A–Z)</MudSelectItem>
+                        <MudSelectItem Value="PlaceSort.Country">Land</MudSelectItem>
+                        <MudSelectItem Value="PlaceSort.Distance">Entfernung</MudSelectItem>
+                    </MudSelect>
+                </MudStack>
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                    @_items.Count.ToString("N0") von @CategoryState.Places.Count.ToString("N0") @Category.Name
+                </MudText>
+            </MudStack>
+        </MudPaper>
+
+        @if (_items.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info" Variant="Variant.Text">Keine Orte gefunden.</MudAlert>
+        }
+        else
+        {
+            <MudPaper Elevation="1">
+                <Virtualize Items="_items" ItemSize="64" OverscanCount="10" Context="item">
+                    <div class="pb-list-row" @key="item.Place.Id">
+                        <MudCheckBox T="bool" Value="item.IsVisited" ValueChanged="v => SetVisitedAsync(item.Place, v)"
+                                     Color="Color.Primary" aria-label="Besucht" />
+                        <div class="pb-list-text">
+                            <MudText Typo="Typo.body1" Class="pb-ellipsis">
+                                @(item.Place.City ?? "Unbekannter Ort")
+                                <span class="mud-text-secondary">· @Countries.Name(item.Place.CountryCode)</span>
+                            </MudText>
+                            <MudText Typo="Typo.body2" Class="mud-text-secondary pb-ellipsis">
+                                @(item.Place.Name is { } name ? $"{name} · " : "")@(item.Place.Address ?? "Adresse unbekannt")
+                            </MudText>
+                        </div>
+                        @if (item.DistanceKm is { } km)
+                        {
+                            <MudText Typo="Typo.body2" Class="mud-text-secondary pb-list-distance">@Geo.FormatDistance(km)</MudText>
+                        }
+                        <MudIconButton Icon="@Icons.Material.Filled.Map" Size="Size.Small" aria-label="Auf Karte zeigen"
+                                       OnClick="() => ShowOnMap(item.Place)" />
+                    </div>
+                </Virtualize>
+            </MudPaper>
+        }
+    }
+</MudContainer>
+
+@code {
+    private string? _search;
+    private VisitFilter _filter = VisitFilter.All;
+    private PlaceSort _sort = PlaceSort.City;
+    private List<PlaceListItem> _items = [];
+
+    private Category? Category => CategoryState.Current;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Visits.Changed += OnDataChanged;
+        CategoryState.Changed += OnDataChanged;
+        await Visits.EnsureLoadedAsync();
+        await CategoryState.EnsureLoadedAsync();
+        if (Browser.LastPosition is not null) _sort = PlaceSort.Distance;
+        Refresh();
+    }
+
+    private void Refresh()
+    {
+        if (Category is null) return;
+        var visited = Visits.GetVisitedIds(Category.Id);
+        _items = PlaceQuery.Run(CategoryState.Places, visited.Contains, _search, _filter, _sort, Browser.LastPosition);
+    }
+
+    private void OnDataChanged() => InvokeAsync(() =>
+    {
+        Refresh();
+        StateHasChanged();
+    });
+
+    private void OnSearchChanged(string? search)
+    {
+        _search = search;
+        Refresh();
+    }
+
+    private void OnFilterChanged(VisitFilter filter)
+    {
+        _filter = filter;
+        Refresh();
+    }
+
+    private async Task OnSortChangedAsync(PlaceSort sort)
+    {
+        if (sort == PlaceSort.Distance && Browser.LastPosition is null)
+        {
+            try
+            {
+                await Browser.GetCurrentPositionAsync();
+            }
+            catch (JSException ex)
+            {
+                Snackbar.Add(ex.Message.Split('\n')[0], Severity.Warning);
+                return;
+            }
+        }
+        _sort = sort;
+        Refresh();
+    }
+
+    private async Task SetVisitedAsync(Place place, bool visited)
+    {
+        if (visited)
+            await Visits.SetVisitAsync(Category!.Id, place.Id, new Visit(DateOnly.FromDateTime(DateTime.Today), null));
+        else
+            await Visits.RemoveVisitAsync(Category!.Id, place.Id);
+    }
+
+    private void ShowOnMap(Place place) => Navigation.NavigateTo($"?place={Uri.EscapeDataString(place.Id)}");
+
+    public void Dispose()
+    {
+        Visits.Changed -= OnDataChanged;
+        CategoryState.Changed -= OnDataChanged;
+    }
+}

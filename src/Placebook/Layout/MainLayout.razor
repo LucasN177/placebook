@@ -1,4 +1,6 @@
 ﻿@inherits LayoutComponentBase
+@implements IDisposable
+@inject CategoryState CategoryState
 
 <MudThemeProvider @ref="_themeProvider" Theme="_theme" @bind-IsDarkMode="_isDarkMode" />
 <MudPopoverProvider />
@@ -9,8 +11,31 @@
     <MudAppBar Elevation="1" Dense="true">
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start"
                        OnClick="() => _drawerOpen = !_drawerOpen" aria-label="Menü" />
-        <MudIcon Icon="@Icons.Material.Filled.Place" Class="mx-2" />
-        <MudText Typo="Typo.h6">Placebook</MudText>
+        <MudIcon Icon="@Icons.Material.Filled.Place" Class="mx-2 d-none d-sm-flex" />
+        <MudText Typo="Typo.h6" Class="d-none d-sm-flex">Placebook</MudText>
+
+        @if (CategoryState.Current is { } current)
+        {
+            <MudMenu AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" Class="ml-sm-4">
+                <ActivatorContent>
+                    <MudButton Color="Color.Inherit" Variant="Variant.Text" StartIcon="@CategoryIcons.For(current)"
+                               EndIcon="@(CategoryState.Categories.Count > 1 ? Icons.Material.Filled.ArrowDropDown : null)"
+                               Style="text-transform:none" aria-label="Kategorie wählen"
+                               OnClick="@(e => context.ToggleAsync(e))">
+                        @current.Name
+                    </MudButton>
+                </ActivatorContent>
+                <ChildContent>
+                    @foreach (var category in CategoryState.Categories)
+                    {
+                        <MudMenuItem Icon="@CategoryIcons.For(category)" OnClick="() => CategoryState.SelectAsync(category)">
+                            @category.Name <span class="mud-text-secondary ml-2">@category.Count.ToString("N0")</span>
+                        </MudMenuItem>
+                    }
+                </ChildContent>
+            </MudMenu>
+        }
+
         <MudSpacer />
         <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
                        Color="Color.Inherit" OnClick="() => _isDarkMode = !_isDarkMode"
@@ -27,15 +52,18 @@
 </MudLayout>
 
 @code {
-    private readonly MudTheme _theme = new()
-    {
-        PaletteLight = new PaletteLight { Primary = "#DA291C", Secondary = "#FFC72C", AppbarBackground = "#DA291C" },
-        PaletteDark = new PaletteDark { Primary = "#FF5A4E", Secondary = "#FFC72C" }
-    };
+    private const string DefaultColor = "#DA291C";
 
+    private MudTheme _theme = CreateTheme(DefaultColor);
     private MudThemeProvider _themeProvider = default!;
     private bool _drawerOpen;
     private bool _isDarkMode;
+
+    protected override async Task OnInitializedAsync()
+    {
+        CategoryState.Changed += OnCategoryChanged;
+        await CategoryState.EnsureLoadedAsync();
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -45,4 +73,19 @@
             StateHasChanged();
         }
     }
+
+    /// <summary>Die App übernimmt die Farbe der gewählten Kategorie.</summary>
+    private void OnCategoryChanged()
+    {
+        _theme = CreateTheme(CategoryState.Current?.Color ?? DefaultColor);
+        StateHasChanged();
+    }
+
+    private static MudTheme CreateTheme(string color) => new()
+    {
+        PaletteLight = new PaletteLight { Primary = color, AppbarBackground = color },
+        PaletteDark = new PaletteDark { Primary = color }
+    };
+
+    public void Dispose() => CategoryState.Changed -= OnCategoryChanged;
 }

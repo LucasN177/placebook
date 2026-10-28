@@ -13,5 +13,6 @@ builder.Services.AddMudServices();
 builder.Services.AddScoped<CategoryService>();
 builder.Services.AddScoped<VisitService>();
 builder.Services.AddScoped<BrowserService>();
+builder.Services.AddScoped<CategoryState>();
 
 await builder.Build().RunAsync();

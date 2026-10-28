@@ -1,7 +1,6 @@
 @page "/"
-@using System.Globalization
 @implements IDisposable
-@inject CategoryService Categories
+@inject CategoryState CategoryState
 @inject VisitService Visits
 @inject BrowserService Browser
 @inject IBrowserViewportService Viewport
@@ -13,7 +12,7 @@
     <LeafletMap @ref="_map" OnReady="OnMapReadyAsync" OnPlaceClicked="OnPlaceClicked" />
 
     <MudPaper Class="pb-map-overlay pa-3" Elevation="3">
-        @if (_category is null)
+        @if (Category is null)
         {
             <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
             <MudText Typo="Typo.body2" Class="mt-2">Lade Orte …</MudText>
@@ -21,23 +20,8 @@
         else
         {
             <MudStack Spacing="1">
-                @if (_categories.Count > 1)
-                {
-                    <MudSelect T="Category" Value="_category" ValueChanged="SelectCategoryAsync" ToStringFunc="c => c?.Name"
-                               Dense="true" Variant="Variant.Outlined" Margin="Margin.Dense">
-                        @foreach (var c in _categories)
-                        {
-                            <MudSelectItem Value="c">@c.Name</MudSelectItem>
-                        }
-                    </MudSelect>
-                }
-                else
-                {
-                    <MudText Typo="Typo.subtitle1"><b>@_category.Name</b> in Europa</MudText>
-                }
-
                 <MudText Typo="Typo.body2">
-                    <b>@VisitedCount.ToString("N0")</b> von @_places.Count.ToString("N0") besucht
+                    <b>@VisitedCount.ToString("N0")</b> von @Places.Count.ToString("N0") @Category.Name besucht
                     (@Percent.ToString(Percent is > 0 and < 1 ? "0.00" : "0.0") %)
                 </MudText>
                 <MudProgressLinear Value="Percent" Color="Color.Primary" Rounded="true" Size="Size.Small" />
@@ -53,9 +37,9 @@
     </MudPaper>
 
     <div class="pb-map-fabs">
-        <MudTooltip Text="Nächste offene Filiale" Placement="Placement.Left">
+        <MudTooltip Text="Nächster offener Ort" Placement="Placement.Left">
             <MudFab Color="Color.Primary" Size="Size.Medium" StartIcon="@Icons.Material.Filled.NearMe"
-                    OnClick="ShowNearestOpenAsync" Disabled="_category is null || _locating" aria-label="Nächste offene Filiale" />
+                    OnClick="ShowNearestOpenAsync" Disabled="Category is null || _locating" aria-label="Nächster offener Ort" />
         </MudTooltip>
         <MudTooltip Text="Mein Standort" Placement="Placement.Left">
             <MudFab Color="Color.Default" Size="Size.Small" Class="pb-fab-surface" StartIcon="@Icons.Material.Filled.MyLocation"
@@ -71,13 +55,13 @@
 @* Auf schmalen Bildschirmen fährt der Drawer von unten ein, sonst von rechts *@
 <MudDrawer @bind-Open="_detailsOpen" Anchor="@(_narrow ? Anchor.Bottom : Anchor.End)" Variant="DrawerVariant.Temporary"
            Width="@(_narrow ? null : "360px")" Height="@(_narrow ? "auto" : null)" Elevation="4" Class="pb-details">
-    @if (_selected is not null && _category is not null)
+    @if (_selected is not null && Category is not null)
     {
         <MudDrawerHeader Class="pb-0">
             <MudStack Spacing="0">
-                <MudText Typo="Typo.h6">@_selected.DisplayName(_category)</MudText>
+                <MudText Typo="Typo.h6">@_selected.DisplayName(Category)</MudText>
                 <MudText Typo="Typo.body2" Class="mud-text-secondary">
-                    @(_selected.DisplayAddress ?? "Adresse unbekannt") · @CountryName(_selected.CountryCode)
+                    @(_selected.DisplayAddress ?? "Adresse unbekannt") · @Countries.Name(_selected.CountryCode)
                 </MudText>
                 @if (Browser.LastPosition is { } position)
                 {
@@ -111,13 +95,12 @@
 </MudDrawer>
 
 @code {
-    private enum VisitFilter { All, Visited, Open }
+    /// <summary>Optional: Orts-ID, die nach dem Laden angesprungen wird (z. B. aus der Listenansicht).</summary>
+    [SupplyParameterFromQuery(Name = "place")]
+    public string? PlaceId { get; set; }
 
     private LeafletMap _map = default!;
-    private IReadOnlyList<Category> _categories = [];
-    private Category? _category;
-    private IReadOnlyList<Place> _places = [];
-    private Dictionary<string, Place> _placesById = new();
+    private bool _mapReady;
     private VisitFilter _filter = VisitFilter.All;
 
     private bool _detailsOpen;
@@ -126,18 +109,32 @@
     private Place? _selected;
     private Visit? _selectedVisit;
 
-    private int VisitedCount => _category is null ? 0 : _places.Count(p => Visits.IsVisited(_category.Id, p.Id));
-    private double Percent => _places.Count == 0 ? 0 : 100.0 * VisitedCount / _places.Count;
+    private Category? Category => CategoryState.Current;
+    private IReadOnlyList<Place> Places => CategoryState.Places;
+    // Nur Besuche zählen, deren Ort es in den aktuellen Daten noch gibt
+    private int VisitedCount => Category is null ? 0 : Visits.GetVisitedIds(Category.Id).Count(CategoryState.PlacesById.ContainsKey);
+    private double Percent => Places.Count == 0 ? 0 : 100.0 * VisitedCount / Places.Count;
 
-    protected override void OnInitialized() => Visits.Changed += StateHasChanged;
+    protected override void OnInitialized()
+    {
+        Visits.Changed += StateHasChanged;
+        CategoryState.Changed += OnCategoryChanged;
+    }
 
     private async Task OnMapReadyAsync()
     {
         try
         {
             await Visits.EnsureLoadedAsync();
-            _categories = await Categories.GetCategoriesAsync();
-            if (_categories.Count > 0) await SelectCategoryAsync(_categories[0]);
+            await CategoryState.EnsureLoadedAsync();
+            _mapReady = true;
+            await RenderMarkersAsync();
+
+            if (PlaceId is not null && CategoryState.PlacesById.TryGetValue(PlaceId, out var place))
+            {
+                await _map.FlyToAsync(place.Lat, place.Lon, 16);
+                await OnPlaceClicked(place.Id);
+            }
         }
         catch (Exception ex)
         {
@@ -145,13 +142,13 @@
         }
     }
 
-    private async Task SelectCategoryAsync(Category category)
+    private void OnCategoryChanged() => _ = InvokeAsync(async () =>
     {
-        _category = category;
-        _places = await Categories.GetPlacesAsync(category);
-        _placesById = _places.ToDictionary(p => p.Id);
+        _detailsOpen = false;
+        _selected = null;
         await RenderMarkersAsync();
-    }
+        StateHasChanged();
+    });
 
     private async Task SetFilterAsync(VisitFilter filter)
     {
@@ -161,23 +158,23 @@
 
     private async Task RenderMarkersAsync()
     {
-        if (_category is null) return;
-        var visited = Visits.GetVisitedIds(_category.Id);
+        if (!_mapReady || Category is null) return;
+        var visited = Visits.GetVisitedIds(Category.Id);
         var places = _filter switch
         {
-            VisitFilter.Visited => _places.Where(p => Visits.IsVisited(_category.Id, p.Id)),
-            VisitFilter.Open => _places.Where(p => !Visits.IsVisited(_category.Id, p.Id)),
-            _ => _places
+            VisitFilter.Visited => Places.Where(p => visited.Contains(p.Id)),
+            VisitFilter.Open => Places.Where(p => !visited.Contains(p.Id)),
+            _ => Places
         };
-        await _map.SetPlacesAsync(places, visited, _category.Color);
+        await _map.SetPlacesAsync(places, visited, Category.Color);
     }
 
     private async Task OnPlaceClicked(string placeId)
     {
-        if (_category is null || !_placesById.TryGetValue(placeId, out var place)) return;
+        if (Category is null || !CategoryState.PlacesById.TryGetValue(placeId, out var place)) return;
         _narrow = await Viewport.IsMediaQueryMatchAsync("(max-width: 600px)");
         _selected = place;
-        _selectedVisit = Visits.GetVisit(_category.Id, placeId);
+        _selectedVisit = Visits.GetVisit(Category.Id, placeId);
         _detailsOpen = true;
     }
 
@@ -210,14 +207,14 @@
 
     private async Task ShowNearestOpenAsync()
     {
-        if (_category is null || await LocateAsync() is not { } position) return;
+        if (Category is null || await LocateAsync() is not { } position) return;
 
-        var nearest = _places
-            .Where(p => !Visits.IsVisited(_category.Id, p.Id))
+        var nearest = Places
+            .Where(p => !Visits.IsVisited(Category.Id, p.Id))
             .MinBy(p => Geo.DistanceKm(position.Lat, position.Lon, p.Lat, p.Lon));
         if (nearest is null)
         {
-            Snackbar.Add($"Du hast alle {_category.Name}-Orte besucht! 🎉", Severity.Success);
+            Snackbar.Add($"Du hast alle {Category.Name}-Orte besucht! 🎉", Severity.Success);
             return;
         }
 
@@ -231,7 +228,7 @@
             await SaveVisitAsync(new Visit(DateOnly.FromDateTime(DateTime.Today), null));
         else
         {
-            await Visits.RemoveVisitAsync(_category!.Id, _selected!.Id);
+            await Visits.RemoveVisitAsync(Category!.Id, _selected!.Id);
             _selectedVisit = null;
         }
 
@@ -251,7 +248,7 @@
     private async Task SaveVisitAsync(Visit visit)
     {
         _selectedVisit = visit;
-        await Visits.SetVisitAsync(_category!.Id, _selected!.Id, visit);
+        await Visits.SetVisitAsync(Category!.Id, _selected!.Id, visit);
     }
 
     private static DateTime? ToDateTime(DateOnly? date) => date?.ToDateTime(TimeOnly.MinValue);
@@ -262,17 +259,9 @@
         return $"https://www.openstreetmap.org/{type}/{place.Id[1..]}";
     }
 
-    private static string CountryName(string countryCode)
+    public void Dispose()
     {
-        try
-        {
-            return new RegionInfo(countryCode).DisplayName;
-        }
-        catch (ArgumentException)
-        {
-            return countryCode; // z. B. XK (Kosovo) ist kein ISO-Code im .NET-Sinne
-        }
+        Visits.Changed -= StateHasChanged;
+        CategoryState.Changed -= OnCategoryChanged;
     }
-
-    public void Dispose() => Visits.Changed -= StateHasChanged;
 }

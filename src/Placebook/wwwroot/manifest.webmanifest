@@ -1,0 +1,27 @@
+{
+  "name": "Placebook",
+  "short_name": "Placebook",
+  "description": "Sammle Orte: Markiere auf der Karte, welche Filialen in Europa du schon besucht hast.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "lang": "de",
+  "background_color": "#1E3A5F",
+  "theme_color": "#1E3A5F",
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    }
+  ]
+}

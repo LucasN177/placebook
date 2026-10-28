@@ -7,5 +7,14 @@
     "file": "places/mcdonalds.json",
     "count": 8783,
     "updatedAt": "2026-10-28"
+  },
+  {
+    "id": "ikea",
+    "name": "IKEA",
+    "icon": "chair",
+    "color": "#0058A3",
+    "file": "places/ikea.json",
+    "count": 424,
+    "updatedAt": "2026-10-28"
   }
 ]

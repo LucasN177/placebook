@@ -175,3 +175,98 @@ code {
     background-color: var(--mud-palette-surface) !important;
     color: var(--mud-palette-text-primary) !important;
 }
+
+/* ---------- Liste ---------- */
+
+.pb-list-header {
+    position: sticky;
+    top: 56px;
+    z-index: 2;
+}
+
+.pb-list-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 64px;
+    padding: 0 8px 0 4px;
+    border-bottom: 1px solid var(--mud-palette-lines-default);
+}
+
+.pb-list-text {
+    flex: 1;
+    min-width: 0;
+}
+
+.pb-list-distance {
+    white-space: nowrap;
+}
+
+.pb-ellipsis {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ---------- Statistik ---------- */
+
+.pb-stat {
+    height: 100%;
+}
+
+/* Monatsbalken: eine Reihe in Kategoriefarbe, abgerundete Enden an der Basislinie, 2px Abstand */
+.pb-bars {
+    display: flex;
+    align-items: stretch;
+    gap: 2px;
+    height: 180px;
+    margin-top: 12px;
+}
+
+.pb-bar-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 0;
+    cursor: default;
+}
+
+.pb-bar-value {
+    height: 18px;
+    font-size: 12px;
+    color: var(--mud-palette-text-secondary);
+}
+
+.pb-bar-track {
+    flex: 1;
+    width: 100%;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    border-bottom: 1px solid var(--mud-palette-lines-default);
+}
+
+.pb-bar {
+    width: min(28px, 70%);
+    min-height: 0;
+    border-radius: 4px 4px 0 0;
+    background: var(--mud-palette-primary);
+    transition: opacity 0.15s;
+}
+
+.pb-bar-col:hover .pb-bar {
+    opacity: 0.75;
+}
+
+.pb-bar-col:hover .pb-bar-label {
+    color: var(--mud-palette-text-primary);
+}
+
+.pb-bar-label {
+    height: 20px;
+    padding-top: 4px;
+    font-size: 11px;
+    color: var(--mud-palette-text-secondary);
+    white-space: nowrap;
+}
