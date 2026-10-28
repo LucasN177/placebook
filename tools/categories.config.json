@@ -33,6 +33,7 @@
     {
       "id": "hospitals",
       "name": "Krankenhäuser",
+      "itemName": "Krankenhaus",
       "icon": "local_hospital",
       "color": "#00897B",
       "filter": "nwr[\"amenity\"=\"hospital\"]",
@@ -42,11 +43,13 @@
     {
       "id": "universities",
       "name": "Universitäten",
+      "itemName": "Hochschule",
       "icon": "school",
       "color": "#6A1B9A",
-      "filter": "nwr[\"amenity\"=\"university\"][\"name\"]",
+      "filter": "nwr[\"amenity\"=\"university\"][\"name\"][\"wikidata\"]",
       "perCountry": true,
-      "mergeSameName": true
+      "mergeSameName": true,
+      "dedupeTag": "wikidata"
     }
   ]
 }

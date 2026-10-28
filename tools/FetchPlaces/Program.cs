@@ -2,7 +2,8 @@
 //
 //   dotnet run --project tools/FetchPlaces                         # alle Kategorien
 //   dotnet run --project tools/FetchPlaces -- --category mcdonalds # nur eine Kategorie
-//   dotnet run --project tools/FetchPlaces -- --from-cache         # letzte Overpass-Antwort erneut auswerten
+//   dotnet run --project tools/FetchPlaces -- --from-cache         # Zwischenspeicher nutzen, nur Fehlendes abfragen
+//   dotnet run --project tools/FetchPlaces -- --cache-only         # nur Zwischenspeicher, fehlende Länder auslassen
 
 using System.Globalization;
 using System.Text;
@@ -30,7 +31,10 @@ if (categories.Count == 0)
 // Timeout pro Anfrage steuert OverpassClient (Europa-weit länger als pro Land)
 using var http = new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
 http.DefaultRequestHeaders.UserAgent.ParseAdd("Placebook-FetchPlaces/1.0 (+https://github.com/LucasN177/placebook)");
-var overpass = new OverpassClient(http);
+// --cache-only: keine neuen Abfragen, Datei aus den vorhandenen Ländern erzeugen (Teildaten, wenn Overpass streikt)
+var cacheOnly = args.Contains("--cache-only");
+var fromCache = cacheOnly || args.Contains("--from-cache");
+var overpass = new OverpassClient(http, cacheOnly);
 
 var indexPath = Path.Combine(dataDir, "categories.json");
 var failed = new List<string>();
@@ -39,9 +43,10 @@ foreach (var category in categories)
 {
     Console.WriteLine($"[{category.Id}] Frage Overpass ab …");
     List<Place> places;
+    List<string> missing;
     try
     {
-        places = await overpass.FetchPlacesAsync(category, config.Region, args.Contains("--from-cache"));
+        (places, missing) = await overpass.FetchPlacesAsync(category, config.Region, fromCache);
     }
     catch (InvalidOperationException ex)
     {
@@ -51,6 +56,8 @@ foreach (var category in categories)
         continue;
     }
     Console.WriteLine($"[{category.Id}] {places.Count} Orte in {places.Select(p => p.Cc).Distinct().Count()} Ländern");
+    if (missing.Count > 0)
+        Console.WriteLine($"[{category.Id}] TEILDATEN – es fehlen {missing.Count} Länder: {string.Join(", ", missing)}");
 
     var file = $"places/{category.Id}.json";
     var path = Path.Combine(dataDir, "places", $"{category.Id}.json");
@@ -62,7 +69,7 @@ foreach (var category in categories)
     var index = LoadIndex(indexPath);
     index.RemoveAll(c => c.Id == category.Id);
     index.Add(new CategoryIndexEntry(category.Id, category.Name, category.Icon, category.Color, file,
-        places.Count, DateOnly.FromDateTime(DateTime.UtcNow)));
+        places.Count, DateOnly.FromDateTime(DateTime.UtcNow), missing.Count > 0 ? missing : null, category.ItemName));
     // Reihenfolge aus der Config beibehalten
     index = index.OrderBy(c => config.Categories.FindIndex(x => x.Id == c.Id)).ToList();
     File.WriteAllText(indexPath, JsonSerializer.Serialize(index, Json.WriteIndented) + "\n", new UTF8Encoding(false));
@@ -110,13 +117,24 @@ namespace FetchPlaces
     /// (z. B. Krankenhäuser) ist die Gesamtabfrage für die öffentlichen Server zu schwer.</param>
     /// <param name="MergeSameName">Einträge mit gleichem Namen im selben Land und weniger als 1,5 km Abstand
     /// zusammenfassen – z. B. sind bei Universitäten oft Campus und einzelne Gebäude getaggt.</param>
+    /// <param name="DedupeTag">Nur Einträge mit diesem OSM-Tag übernehmen und pro Tag-Wert nur einen behalten – z. B.
+    /// "wikidata" bei Universitäten: eigenständige Hochschulen haben einen Wikidata-Eintrag, einzelne Gebäude,
+    /// Institute und Fakultäten meist nicht, und Campus-Teile derselben Hochschule teilen sich den Eintrag.</param>
+    /// <param name="ItemName">Bezeichnung eines einzelnen Orts ohne eigenen Namen (z. B. "Krankenhaus"), sonst Name.</param>
     record CategoryConfig(string Id, string Name, string Icon, string Color, string Filter,
-        bool PerCountry = false, bool MergeSameName = false);
+        bool PerCountry = false, bool MergeSameName = false, string? DedupeTag = null, string? ItemName = null);
 
-    record CategoryIndexEntry(string Id, string Name, string Icon, string Color, string File, int Count, DateOnly UpdatedAt);
+    /// <param name="MissingCountries">Nur bei Teildaten: Länder, deren Abfrage noch fehlt.</param>
+    record CategoryIndexEntry(string Id, string Name, string Icon, string Color, string File, int Count, DateOnly UpdatedAt,
+        List<string>? MissingCountries = null, string? ItemName = null);
 
     /// <summary>Kompaktes Ortsformat, siehe docs/IMPLEMENTATION_PLAN.md, Abschnitt 3.2.</summary>
-    record Place(string Id, string? N, double Lat, double Lon, string? A, string? C, string? Z, string Cc);
+    record Place(string Id, string? N, double Lat, double Lon, string? A, string? C, string? Z, string Cc)
+    {
+        /// <summary>Wert des <see cref="CategoryConfig.DedupeTag"/> – nur zum Zusammenfassen, wird nicht gespeichert.</summary>
+        [System.Text.Json.Serialization.JsonIgnore]
+        public string? DedupeKey { get; init; }
+    }
 
     static class Json
     {
@@ -125,6 +143,7 @@ namespace FetchPlaces
         public static readonly JsonSerializerOptions WriteIndented = new(JsonSerializerDefaults.Web)
         {
             WriteIndented = true,
+            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
             Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
         };
 
@@ -135,7 +154,7 @@ namespace FetchPlaces
         };
     }
 
-    class OverpassClient(HttpClient http)
+    class OverpassClient(HttpClient http, bool cacheOnly)
     {
         private static readonly string[] Endpoints =
         [
@@ -151,21 +170,31 @@ namespace FetchPlaces
         /// Fragt Overpass ab. Die Rohantwort wird im Temp-Ordner zwischengespeichert; mit <paramref name="fromCache"/>
         /// wird sie wiederverwendet, statt die minutenlange Abfrage erneut zu starten.
         /// </summary>
-        public async Task<List<Place>> FetchPlacesAsync(CategoryConfig category, Region region, bool fromCache)
+        /// <returns>Die Orte und – nur bei --cache-only – die Länder, die noch nicht im Zwischenspeicher liegen.</returns>
+        public async Task<(List<Place> Places, List<string> Missing)> FetchPlacesAsync(CategoryConfig category, Region region, bool fromCache)
         {
+            var missing = new List<string>();
             var places = category.PerCountry
-                ? await FetchPerCountryAsync(category, region, fromCache)
-                : await FetchPartAsync(category, region, $"placebook-overpass-{category.Id}.json", fromCache, RegionTimeout);
+                ? await FetchPerCountryAsync(category, region, fromCache, missing)
+                : await FetchPartAsync(category, region, $"placebook-overpass-{category.Id}.json", fromCache, RegionTimeout)
+                  ?? throw new InvalidOperationException("Keine zwischengespeicherte Antwort vorhanden.");
+            if (category.DedupeTag is not null)
+            {
+                var deduped = PlaceMerger.DedupeByKey(places);
+                Console.WriteLine($"[{category.Id}] {places.Count - deduped.Count} Einträge mit gleichem {category.DedupeTag} zusammengefasst");
+                places = deduped;
+            }
             if (category.MergeSameName)
             {
                 var merged = PlaceMerger.MergeSameName(places);
                 Console.WriteLine($"[{category.Id}] {places.Count - merged.Count} Duplikate mit gleichem Namen zusammengefasst");
                 places = merged;
             }
-            return places;
+            return (places, missing);
         }
 
-        private async Task<List<Place>> FetchPerCountryAsync(CategoryConfig category, Region region, bool fromCache)
+        private async Task<List<Place>> FetchPerCountryAsync(CategoryConfig category, Region region, bool fromCache,
+            List<string> missing)
         {
             // Pro Land einzeln abfragen und zwischenspeichern – mit --from-cache setzt ein neuer Lauf bei den
             // fehlenden Ländern fort, statt von vorn zu beginnen
@@ -176,16 +205,25 @@ namespace FetchPlaces
                 Console.WriteLine($"[{category.Id}] {country} ({i + 1}/{region.Countries.Count})");
                 var part = await FetchPartAsync(category, region with { Countries = [country] },
                     $"placebook-overpass-{category.Id}-{country}.json", fromCache, CountryTimeout);
+                if (part is null)
+                {
+                    missing.Add(country);
+                    continue;
+                }
                 foreach (var place in part)
                     places.TryAdd(place.Id, place);
             }
+            if (missing.Count == region.Countries.Count)
+                throw new InvalidOperationException("Kein einziges Land im Zwischenspeicher.");
             return places.Values.OrderBy(p => p.Id, StringComparer.Ordinal).ToList();
         }
 
-        private async Task<List<Place>> FetchPartAsync(CategoryConfig category, Region region, string cacheFile,
+        /// <returns>null, wenn mit --cache-only nichts zwischengespeichert ist.</returns>
+        private async Task<List<Place>?> FetchPartAsync(CategoryConfig category, Region region, string cacheFile,
             bool fromCache, TimeSpan timeout)
         {
             var cachePath = Path.Combine(Path.GetTempPath(), cacheFile);
+            if (cacheOnly && !File.Exists(cachePath)) return null;
             if (!fromCache || !File.Exists(cachePath))
                 await QueryAsync(BuildQuery(category, region), cachePath, timeout);
             else
@@ -296,6 +334,8 @@ namespace FetchPlaces
 
                 var id = type[0] + element.GetProperty("id").GetInt64().ToString(CultureInfo.InvariantCulture);
                 var name = Tag(tags, "name");
+                string? dedupeKey = null;
+                if (category.DedupeTag is { } dedupeTag && (dedupeKey = Tag(tags, dedupeTag)) is null) continue;
                 var street = Tag(tags, "addr:street");
                 var house = Tag(tags, "addr:housenumber");
 
@@ -308,7 +348,7 @@ namespace FetchPlaces
                     street is null ? null : house is null ? street : $"{street} {house}",
                     Tag(tags, "addr:city") ?? Tag(tags, "addr:place"),
                     Tag(tags, "addr:postcode"),
-                    country));
+                    country) { DedupeKey = dedupeKey });
             }
 
             return places.Values.OrderBy(p => p.Id, StringComparer.Ordinal).ToList();
@@ -330,6 +370,20 @@ namespace FetchPlaces
         /// Bevorzugt bleibt die größte Einheit (Relation vor Fläche vor Punkt – also eher der Campus als ein
         /// einzelnes Gebäude) und ein Eintrag mit Adresse. Weit entfernte Standorte (z. B. zweiter Campus) bleiben.
         /// </summary>
+        /// <summary>Ein Eintrag pro <see cref="Place.DedupeKey"/>; bevorzugt die größte Einheit und einen mit Adresse.</summary>
+        public static List<Place> DedupeByKey(List<Place> places) =>
+            places
+                .GroupBy(p => p.DedupeKey)
+                .SelectMany(g => g.Key is null ? g.AsEnumerable() : [Preferred(g).First()])
+                .OrderBy(p => p.Id, StringComparer.Ordinal)
+                .ToList();
+
+        private static IEnumerable<Place> Preferred(IEnumerable<Place> places) =>
+            places
+                .OrderBy(p => p.Id[0] switch { 'r' => 0, 'w' => 1, _ => 2 })
+                .ThenBy(p => p.A is null)
+                .ThenBy(p => p.Id, StringComparer.Ordinal);
+
         public static List<Place> MergeSameName(List<Place> places)
         {
             var result = new List<Place>();
@@ -342,10 +396,7 @@ namespace FetchPlaces
                 }
 
                 var kept = new List<Place>();
-                foreach (var place in group
-                             .OrderBy(p => p.Id[0] switch { 'r' => 0, 'w' => 1, _ => 2 })
-                             .ThenBy(p => p.A is null)
-                             .ThenBy(p => p.Id, StringComparer.Ordinal))
+                foreach (var place in Preferred(group))
                 {
                     if (!kept.Any(k => DistanceKm(k, place) < MaxDistanceKm))
                         kept.Add(place);

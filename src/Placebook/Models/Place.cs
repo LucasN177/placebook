@@ -16,8 +16,10 @@ public sealed record Place(
     [property: JsonPropertyName("z")] string? PostalCode,
     [property: JsonPropertyName("cc")] string CountryCode)
 {
-    /// <summary>Der Name fehlt in der Datei, wenn er dem Kategorienamen entspricht.</summary>
-    public string DisplayName(Category category) => Name ?? category.Name;
+    /// <summary>
+    /// Der Name fehlt in der Datei, wenn er dem Kategorienamen entspricht (Ketten) oder in OSM keiner hinterlegt ist.
+    /// </summary>
+    public string DisplayName(Category category) => Name ?? category.ItemName ?? category.Name;
 
     public string? DisplayAddress
     {

@@ -25,6 +25,7 @@
                     (@Percent.ToString(Percent is > 0 and < 1 ? "0.00" : "0.0") %)
                 </MudText>
                 <MudProgressLinear Value="Percent" Color="Color.Primary" Rounded="true" Size="Size.Small" />
+                <PartialDataHint Category="Category" Compact="true" />
 
                 <MudChipSet T="VisitFilter" SelectedValue="_filter" SelectedValueChanged="SetFilterAsync"
                             SelectionMode="SelectionMode.SingleSelection" CheckMark="false" Size="Size.Small">

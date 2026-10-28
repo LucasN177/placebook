@@ -1,0 +1,28 @@
+@* Hinweis, wenn für eine Kategorie noch nicht alle Länder abgerufen werden konnten *@
+@if (Category is { IsPartial: true } category)
+{
+    @if (Compact)
+    {
+        <MudText Typo="Typo.caption" Class="mud-text-secondary" title="@MissingNames(category)">
+            <MudIcon Icon="@Icons.Material.Filled.Info" Style="font-size:14px; vertical-align:-2px" /> Daten noch unvollständig – @category.MissingCountries!.Count Länder fehlen
+        </MudText>
+    }
+    else
+    {
+        <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Text" Class="@Class">
+            Daten noch unvollständig – es fehlen @category.MissingCountries!.Count Länder: @MissingNames(category)
+        </MudAlert>
+    }
+}
+
+@code {
+    [Parameter] public Category? Category { get; set; }
+
+    /// <summary>Einzeilig (für das Karten-Overlay); die Länder stehen dann im Tooltip.</summary>
+    [Parameter] public bool Compact { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    private static string MissingNames(Category category) =>
+        string.Join(", ", category.MissingCountries!.Select(Countries.Name).Order());
+}

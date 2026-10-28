@@ -29,8 +29,10 @@ ganz Europa und lässt sich bis auf Stadt- und Straßenebene zoomen.
 | McDonald's | 8.783 | 37 | `brand:wikidata=Q38076` |
 | Burger King | 4.318 | 37 | `brand:wikidata=Q177054` |
 | IKEA | 424 | 31 | `brand:wikidata=Q54078` |
-| Krankenhäuser | – | – | `amenity=hospital` – *Daten werden gerade erzeugt* |
-| Universitäten | – | – | `amenity=university` – *Daten werden gerade erzeugt* |
+| Krankenhäuser | 2.850 | 10 von 45 | `amenity=hospital` – *Teildaten, weitere Länder folgen* |
+| Universitäten | 1.929 | 26 von 45 | `amenity=university` mit `wikidata` – *Teildaten, weitere Länder folgen* |
+
+Bei Teildaten zeigt die App einen Hinweis mit den noch fehlenden Ländern.
 
 Region: 45 europäische Länder (EU, EWR, Schweiz, Vereinigtes Königreich, Westbalkan, Ukraine, Moldau, Belarus u. a.).
 
@@ -105,7 +107,9 @@ dotnet run --project tools/FetchPlaces -- --category mcdonalds --from-cache
   jeweils mit Wiederholung, und überspringt einen Server für den Rest des Laufs, wenn er wiederholt versagt.
 - Rohantworten werden im Temp-Ordner zwischengespeichert. `--from-cache` verwendet sie wieder – bei Kategorien,
   die Land für Land abgefragt werden, setzt ein neuer Lauf so beim ersten fehlenden Land fort.
-- Eine Ortsdatei wird erst geschrieben, wenn alle Länder einer Kategorie vorliegen.
+- Eine Ortsdatei wird erst geschrieben, wenn alle Länder einer Kategorie vorliegen. Ausnahme: `--cache-only`
+  erzeugt sie ohne neue Abfragen aus den bereits zwischengespeicherten Ländern und vermerkt die fehlenden in
+  `categories.json` (Teildaten).
 
 Zusätzlich aktualisiert der Workflow [`refresh-data.yml`](.github/workflows/refresh-data.yml) die Daten monatlich
 und öffnet einen Pull Request. Dafür muss unter *Settings → Actions → General* die Option
@@ -121,6 +125,9 @@ und öffnet einen Pull Request. Dafür muss unter *Settings → Actions → Gene
      Europa-Abfrage zu schwer für die Server sind.
    - `"mergeSameName": true` fasst Einträge mit gleichem Namen im selben Land und im Umkreis von 1,5 km zusammen
      (z. B. Uni-Campus und einzelne Gebäude).
+   - `"dedupeTag": "wikidata"` übernimmt nur Einträge mit diesem Tag und behält pro Wert einen – bei Universitäten
+     trennt das eigenständige Hochschulen von Instituten, Fakultäten und Gebäuden.
+   - `"itemName"` benennt Orte ohne eigenen Namen (z. B. „Krankenhaus“).
 2. Ein neues Icon in [`CategoryIcons.cs`](src/Placebook/Models/CategoryIcons.cs) eintragen.
 3. `dotnet run --project tools/FetchPlaces -- --category <id> --from-cache` ausführen.
 4. Erzeugte Datei und aktualisierte `categories.json` committen.

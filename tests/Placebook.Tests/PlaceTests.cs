@@ -14,6 +14,15 @@ public class PlaceTests
         Assert.Equal("McDonald's Hbf", (Place("n1") with { Name = "McDonald's Hbf" }).DisplayName(McDonalds));
     }
 
+    [Fact]
+    public void DisplayName_UnnamedPlace_UsesItemName()
+    {
+        var hospitals = new Category("hospitals", "Krankenhäuser", "local_hospital", "#00897B", "places/hospitals.json", 1,
+            new DateOnly(2026, 10, 28), ItemName: "Krankenhaus");
+
+        Assert.Equal("Krankenhaus", Place("n1").DisplayName(hospitals));
+    }
+
     [Theory]
     [InlineData("Alexanderplatz 1", "Berlin", "10178", "Alexanderplatz 1, 10178 Berlin")]
     [InlineData(null, "Berlin", null, "Berlin")]
