@@ -1,7 +1,27 @@
-<MudNavMenu>
-    <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Map">Karte</MudNavLink>
-    <MudNavLink Href="list" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.List">Liste</MudNavLink>
-    <MudNavLink Href="stats" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.BarChart">Statistik</MudNavLink>
-    <MudNavLink Href="settings" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Settings">Einstellungen</MudNavLink>
-    <MudNavLink Href="account" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.AccountCircle">Konto</MudNavLink>
-</MudNavMenu>
+@inject IJSRuntime JS
+
+<div class="pb-nav">
+    <MudNavMenu>
+        <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Map">Karte</MudNavLink>
+        <MudNavLink Href="list" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.List">Liste</MudNavLink>
+        <MudNavLink Href="stats" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.BarChart">Statistik</MudNavLink>
+        <MudNavLink Href="settings" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Settings">Einstellungen</MudNavLink>
+        <MudNavLink Href="account" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.AccountCircle">Konto</MudNavLink>
+    </MudNavMenu>
+
+    <div class="pb-nav-footer">
+        @if (_version is not null)
+        {
+            <div>Placebook Version @_version</div>
+        }
+        <div>by Lucas Nagelsmann</div>
+    </div>
+</div>
+
+@code {
+    private string? _version;
+
+    // Version steht in wwwroot/js/version.js – dieselbe Quelle wie im Ladebildschirm
+    protected override async Task OnInitializedAsync() =>
+        _version = await JS.InvokeAsync<string>("placebookVersion");
+}

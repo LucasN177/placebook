@@ -113,6 +113,16 @@
         content: "Lade App … " var(--blazor-load-percentage-text, "");
     }
 
+.pb-splash-footer {
+    position: absolute;
+    bottom: max(20px, env(safe-area-inset-bottom));
+    left: 0;
+    right: 0;
+    font-size: 12px;
+    opacity: 0.5;
+    letter-spacing: 0.3px;
+}
+
 @keyframes pb-splash-bounce {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-5px); }
@@ -317,4 +327,22 @@ code {
     font-size: 11px;
     color: var(--mud-palette-text-secondary);
     white-space: nowrap;
+}
+
+
+/* ---------- Menü ---------- */
+
+.pb-nav {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.pb-nav-footer {
+    margin-top: auto;
+    padding: 16px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--mud-palette-text-secondary);
+    border-top: 1px solid var(--mud-palette-lines-default);
 }

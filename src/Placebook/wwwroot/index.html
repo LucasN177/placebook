@@ -19,6 +19,7 @@
     <link rel="stylesheet" href="lib/leaflet.markercluster/MarkerCluster.css" />
     <link rel="stylesheet" href="css/app.css" />
     <script type="importmap"></script>
+    <script src="js/version.js"></script>
 
     <!-- GitHub Pages SPA-Fallback: 404.html leitet Deep Links als "?/pfad" hierher um.
          Dieses Skript stellt die ursprüngliche URL wieder her, bevor der Blazor-Router startet. -->
@@ -48,7 +49,11 @@
             <div class="pb-splash-title">Placebook</div>
             <div class="pb-splash-subtitle">Sammle Orte in ganz Europa</div>
             <div class="pb-splash-percent"></div>
+            <div class="pb-splash-footer">Version <span class="pb-splash-version"></span> · by Lucas Nagelsmann</div>
         </div>
+        <script>
+            document.querySelector('.pb-splash-version').textContent = window.placebookVersion();
+        </script>
     </div>
 
     <div id="blazor-error-ui">
