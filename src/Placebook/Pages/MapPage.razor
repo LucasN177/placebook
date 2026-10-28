@@ -3,6 +3,8 @@
 @implements IDisposable
 @inject CategoryService Categories
 @inject VisitService Visits
+@inject BrowserService Browser
+@inject IBrowserViewportService Viewport
 @inject ISnackbar Snackbar
 
 <PageTitle>Karte – Placebook</PageTitle>
@@ -50,11 +52,25 @@
         }
     </MudPaper>
 
-    <MudFab Class="pb-map-fab" Color="Color.Default" Size="Size.Small" StartIcon="@Icons.Material.Filled.Public"
-            OnClick="() => _map.ShowEuropeAsync()" title="Ganz Europa anzeigen" />
+    <div class="pb-map-fabs">
+        <MudTooltip Text="Nächste offene Filiale" Placement="Placement.Left">
+            <MudFab Color="Color.Primary" Size="Size.Medium" StartIcon="@Icons.Material.Filled.NearMe"
+                    OnClick="ShowNearestOpenAsync" Disabled="_category is null || _locating" aria-label="Nächste offene Filiale" />
+        </MudTooltip>
+        <MudTooltip Text="Mein Standort" Placement="Placement.Left">
+            <MudFab Color="Color.Default" Size="Size.Small" Class="pb-fab-surface" StartIcon="@Icons.Material.Filled.MyLocation"
+                    OnClick="ShowMyLocationAsync" Disabled="_locating" aria-label="Mein Standort" />
+        </MudTooltip>
+        <MudTooltip Text="Ganz Europa anzeigen" Placement="Placement.Left">
+            <MudFab Color="Color.Default" Size="Size.Small" Class="pb-fab-surface" StartIcon="@Icons.Material.Filled.Public"
+                    OnClick="() => _map.ShowEuropeAsync()" aria-label="Ganz Europa anzeigen" />
+        </MudTooltip>
+    </div>
 </div>
 
-<MudDrawer @bind-Open="_detailsOpen" Anchor="Anchor.End" Variant="DrawerVariant.Temporary" Width="360px" Elevation="4">
+@* Auf schmalen Bildschirmen fährt der Drawer von unten ein, sonst von rechts *@
+<MudDrawer @bind-Open="_detailsOpen" Anchor="@(_narrow ? Anchor.Bottom : Anchor.End)" Variant="DrawerVariant.Temporary"
+           Width="@(_narrow ? null : "360px")" Height="@(_narrow ? "auto" : null)" Elevation="4" Class="pb-details">
     @if (_selected is not null && _category is not null)
     {
         <MudDrawerHeader Class="pb-0">
@@ -63,6 +79,12 @@
                 <MudText Typo="Typo.body2" Class="mud-text-secondary">
                     @(_selected.DisplayAddress ?? "Adresse unbekannt") · @CountryName(_selected.CountryCode)
                 </MudText>
+                @if (Browser.LastPosition is { } position)
+                {
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                        @Geo.FormatDistance(Geo.DistanceKm(position.Lat, position.Lon, _selected.Lat, _selected.Lon)) entfernt
+                    </MudText>
+                }
             </MudStack>
         </MudDrawerHeader>
         <MudStack Class="pa-4" Spacing="3">
@@ -99,6 +121,8 @@
     private VisitFilter _filter = VisitFilter.All;
 
     private bool _detailsOpen;
+    private bool _narrow;
+    private bool _locating;
     private Place? _selected;
     private Visit? _selectedVisit;
 
@@ -148,12 +172,57 @@
         await _map.SetPlacesAsync(places, visited, _category.Color);
     }
 
-    private void OnPlaceClicked(string placeId)
+    private async Task OnPlaceClicked(string placeId)
     {
         if (_category is null || !_placesById.TryGetValue(placeId, out var place)) return;
+        _narrow = await Viewport.IsMediaQueryMatchAsync("(max-width: 600px)");
         _selected = place;
         _selectedVisit = Visits.GetVisit(_category.Id, placeId);
         _detailsOpen = true;
+    }
+
+    private async Task<GeoPosition?> LocateAsync()
+    {
+        _locating = true;
+        try
+        {
+            var position = await Browser.GetCurrentPositionAsync();
+            await _map.ShowUserLocationAsync(position);
+            return position;
+        }
+        catch (JSException ex)
+        {
+            // JSException enthält den JS-Stacktrace – für Nutzer reicht die erste Zeile
+            Snackbar.Add(ex.Message.Split('\n')[0], Severity.Warning);
+            return null;
+        }
+        finally
+        {
+            _locating = false;
+        }
+    }
+
+    private async Task ShowMyLocationAsync()
+    {
+        if (await LocateAsync() is { } position)
+            await _map.FlyToAsync(position.Lat, position.Lon, 13);
+    }
+
+    private async Task ShowNearestOpenAsync()
+    {
+        if (_category is null || await LocateAsync() is not { } position) return;
+
+        var nearest = _places
+            .Where(p => !Visits.IsVisited(_category.Id, p.Id))
+            .MinBy(p => Geo.DistanceKm(position.Lat, position.Lon, p.Lat, p.Lon));
+        if (nearest is null)
+        {
+            Snackbar.Add($"Du hast alle {_category.Name}-Orte besucht! 🎉", Severity.Success);
+            return;
+        }
+
+        await _map.FlyToAsync(nearest.Lat, nearest.Lon, 16);
+        await OnPlaceClicked(nearest.Id);
     }
 
     private async Task ToggleVisitedAsync(bool visited)

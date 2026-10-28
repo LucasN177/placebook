@@ -1,15 +1,114 @@
 @page "/settings"
+@inject CategoryService Categories
+@inject VisitService Visits
+@inject BrowserService Browser
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
 
 <PageTitle>Einstellungen – Placebook</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-6 mb-8">
     <MudText Typo="Typo.h5" GutterBottom="true">Einstellungen</MudText>
-    <MudText Class="mud-text-secondary">Export/Import deiner besuchten Orte folgt in Meilenstein M4.</MudText>
 
-    <MudText Typo="Typo.h6" Class="mt-6">Datenquelle</MudText>
-    <MudText>
-        Ortsdaten und Kartenkacheln: ©
-        <MudLink Href="https://www.openstreetmap.org/copyright" Target="_blank">OpenStreetMap-Mitwirkende</MudLink>,
-        lizenziert unter der ODbL.
-    </MudText>
+    <MudPaper Class="pa-4 mb-4" Elevation="1">
+        <MudText Typo="Typo.h6">Deine Besuche</MudText>
+        @if (_categories.Count == 0)
+        {
+            <MudProgressLinear Indeterminate="true" Class="my-2" />
+        }
+        else
+        {
+            <MudSimpleTable Dense="true" Elevation="0" Class="my-2">
+                <tbody>
+                    @foreach (var category in _categories)
+                    {
+                        <tr>
+                            <td>@category.Name</td>
+                            <td style="text-align:right"><b>@Visits.CountVisited(category.Id).ToString("N0")</b> von @category.Count.ToString("N0")</td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        }
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+            Deine Besuche werden nur in diesem Browser gespeichert. Sichere sie regelmäßig als Datei, um sie auf ein
+            anderes Gerät zu übertragen oder vor dem Löschen der Browserdaten zu schützen.
+        </MudText>
+    </MudPaper>
+
+    <MudPaper Class="pa-4 mb-4" Elevation="1">
+        <MudText Typo="Typo.h6" GutterBottom="true">Sichern &amp; Wiederherstellen</MudText>
+        <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="2">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Download"
+                       OnClick="ExportAsync">Exportieren</MudButton>
+
+            <MudFileUpload T="IBrowserFile" Accept=".json,application/json" FilesChanged="ImportAsync"
+                           MaxFileSize="MaxImportBytes">
+                <CustomContent>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Upload"
+                               OnClick="@context.OpenFilePickerAsync">Importieren</MudButton>
+                </CustomContent>
+            </MudFileUpload>
+        </MudStack>
+    </MudPaper>
+
+    <MudPaper Class="pa-4" Elevation="1">
+        <MudText Typo="Typo.h6">Datenquelle</MudText>
+        <MudText Typo="Typo.body2">
+            Ortsdaten und Kartenkacheln: ©
+            <MudLink Href="https://www.openstreetmap.org/copyright" Target="_blank">OpenStreetMap-Mitwirkende</MudLink>,
+            lizenziert unter der ODbL. Fehlt eine Filiale, kannst du sie direkt in OpenStreetMap ergänzen.
+        </MudText>
+        @foreach (var category in _categories)
+        {
+            <MudText Typo="Typo.body2" Class="mud-text-secondary mt-1">
+                @category.Name: Stand @category.UpdatedAt.ToString("d")
+            </MudText>
+        }
+    </MudPaper>
 </MudContainer>
+
+@code {
+    private const long MaxImportBytes = 5 * 1024 * 1024;
+
+    private IReadOnlyList<Category> _categories = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Visits.EnsureLoadedAsync();
+        _categories = await Categories.GetCategoriesAsync();
+    }
+
+    private async Task ExportAsync()
+    {
+        var fileName = $"placebook-besuche-{DateTime.Today:yyyy-MM-dd}.json";
+        await Browser.DownloadTextAsync(fileName, Visits.Export());
+        Snackbar.Add($"Gespeichert als {fileName}", Severity.Success);
+    }
+
+    private async Task ImportAsync(IBrowserFile? file)
+    {
+        if (file is null) return;
+
+        var merge = await Dialogs.ShowMessageBoxAsync(new MessageBoxOptions
+        {
+            Title = "Besuche importieren",
+            Message = "Sollen die Besuche aus der Datei mit deinen vorhandenen zusammengeführt werden, oder sollen sie diese vollständig ersetzen?",
+            YesText = "Zusammenführen",
+            NoText = "Ersetzen",
+            CancelText = "Abbrechen"
+        });
+        if (merge is null) return;
+
+        try
+        {
+            using var reader = new StreamReader(file.OpenReadStream(MaxImportBytes));
+            var count = await Visits.ImportAsync(await reader.ReadToEndAsync(), merge.Value);
+            Snackbar.Add($"{count:N0} Besuche importiert.", Severity.Success);
+        }
+        catch (Exception ex) when (ex is FormatException or IOException)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+}

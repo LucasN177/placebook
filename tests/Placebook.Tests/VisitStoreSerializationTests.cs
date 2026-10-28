@@ -17,6 +17,27 @@ public class VisitStoreSerializationTests
         Assert.Equal(new Visit(new DateOnly(2026, 10, 20), "Bester McFlurry"), restored.Visits["mcdonalds"]["n1"]);
     }
 
+    [Fact]
+    public void Merge_KeepsExistingEntries_AndAddsNewOnes()
+    {
+        var current = new VisitStore();
+        current.Visits["mcdonalds"] = new() { ["n1"] = new Visit(new DateOnly(2026, 1, 1), "lokal") };
+        var imported = new VisitStore();
+        imported.Visits["mcdonalds"] = new()
+        {
+            ["n1"] = new Visit(new DateOnly(2025, 5, 5), "aus Datei"),
+            ["n2"] = new Visit(null, null)
+        };
+        imported.Visits["ikea"] = new() { ["w9"] = new Visit(null, null) };
+
+        var merged = VisitService.Merge(current, imported);
+
+        Assert.Equal("lokal", merged.Visits["mcdonalds"]["n1"].Note);
+        Assert.True(merged.Visits["mcdonalds"].ContainsKey("n2"));
+        Assert.True(merged.Visits["ikea"].ContainsKey("w9"));
+        Assert.Single(current.Visits["mcdonalds"]); // Eingabe bleibt unverändert
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("")]

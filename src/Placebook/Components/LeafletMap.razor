@@ -51,6 +51,12 @@
         if (_module is not null) await _module.InvokeVoidAsync("flyTo", _mapId, lat, lon, zoom);
     }
 
+    public async Task ShowUserLocationAsync(GeoPosition position)
+    {
+        if (_module is not null)
+            await _module.InvokeVoidAsync("showUserLocation", _mapId, position.Lat, position.Lon, position.Accuracy);
+    }
+
     public async Task ShowEuropeAsync()
     {
         if (_module is not null) await _module.InvokeVoidAsync("showEurope", _mapId);

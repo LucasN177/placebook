@@ -108,11 +108,40 @@ code {
     width: min(320px, calc(100vw - 72px));
 }
 
-.pb-map-fab {
-    position: absolute !important;
+.pb-map-fabs {
+    position: absolute;
     right: 12px;
     bottom: 32px;
     z-index: 500;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+/* Mobil: Overlay schmaler, Leaflet-Zoomknöpfe ausblenden (Pinch-Zoom) */
+@media (max-width: 600px) {
+    .pb-map-overlay {
+        left: 8px;
+        top: 8px;
+        width: calc(100vw - 16px);
+    }
+
+    .pb-map .leaflet-control-zoom {
+        display: none;
+    }
+
+    .pb-details.mud-drawer--open.mud-drawer-pos-bottom {
+        max-height: 85vh;
+        overflow-y: auto;
+        border-radius: 12px 12px 0 0;
+    }
+
+    /* Der Drawer hat Höhe "auto" (passt sich dem Inhalt an). MudBlazor versteckt ihn per
+       bottom: calc(-1 * Höhe) – mit auto ist das ungültig und er bliebe oben sichtbar. */
+    .pb-details.mud-drawer-temporary.mud-drawer-pos-bottom.mud-drawer--closed {
+        bottom: -100vh;
+    }
 }
 
 .pb-cluster-wrapper {
@@ -139,4 +168,10 @@ code {
     background: #fff;
     color: #212121;
     font: 600 12px/1 Roboto, sans-serif;
+}
+
+/* Color.Default ist im Dark Mode fast transparent – auf der Karte braucht es einen festen Hintergrund */
+.pb-fab-surface {
+    background-color: var(--mud-palette-surface) !important;
+    color: var(--mud-palette-text-primary) !important;
 }

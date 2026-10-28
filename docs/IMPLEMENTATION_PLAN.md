@@ -281,9 +281,9 @@ jobs:
 - **Done, wenn:** Status überlebt Reload, Marker färbt sich sofort um.
 
 ### M4 – Komfort & Release (1 Tag)
-- [ ] Export/Import (Download via JS-Blob, Upload via `MudFileUpload`), Import mit Merge-Option
-- [ ] Geolocation + „nächste offene Filiale“
-- [ ] Dark Mode, responsive Layout (mobil: Drawer von unten)
+- [x] Export/Import (Download via JS-Blob, Upload via `MudFileUpload`), Import mit Merge-Option
+- [x] Geolocation + „nächste offene Filiale“ (inkl. Entfernungsanzeige)
+- [x] Dark Mode, responsive Layout (mobil: Drawer von unten)
 - [x] OSM-Attribution sichtbar, Datenquelle in Settings
 - [x] `refresh-data.yml`
 - **Done, wenn:** v1.0 getaggt, auf dem Handy benutzbar.

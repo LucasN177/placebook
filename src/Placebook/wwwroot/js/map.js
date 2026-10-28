@@ -26,8 +26,18 @@ export function createMap(element, dotNetRef) {
     map.on('moveend', () => saveView(map));
 
     const id = nextId++;
-    maps.set(id, { map, dotNetRef, cluster: null, markers: new Map(), color: null });
+    maps.set(id, { map, dotNetRef, cluster: null, markers: new Map(), color: null, userLayer: null });
     return id;
+}
+
+export function showUserLocation(id, lat, lon, accuracy) {
+    const state = maps.get(id);
+    if (!state) return;
+    if (state.userLayer) state.map.removeLayer(state.userLayer);
+    state.userLayer = L.layerGroup([
+        L.circle([lat, lon], { radius: accuracy, weight: 1, color: '#1976d2', fillOpacity: 0.1, interactive: false }),
+        L.circleMarker([lat, lon], { radius: 7, weight: 3, color: '#ffffff', fillColor: '#1976d2', fillOpacity: 1, interactive: false }),
+    ]).addTo(state.map);
 }
 
 export function setPlaces(id, ids, lats, lons, visitedIds, color) {

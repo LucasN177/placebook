@@ -45,6 +45,41 @@ public sealed class VisitService(IJSRuntime js)
             await SaveAsync();
     }
 
+    public int CountVisited(string categoryId) =>
+        _store.Visits.TryGetValue(categoryId, out var visits) ? visits.Count : 0;
+
+    public string Export() => Serialize(_store);
+
+    /// <summary>
+    /// Übernimmt einen Export. Beim Zusammenführen bleiben vorhandene Einträge erhalten und es kommen nur neue
+    /// Orte hinzu; sonst wird der aktuelle Stand vollständig ersetzt.
+    /// </summary>
+    /// <returns>Anzahl der Besuche in der importierten Datei.</returns>
+    /// <exception cref="FormatException">Die Datei ist kein gültiger Placebook-Export.</exception>
+    public async Task<int> ImportAsync(string json, bool merge)
+    {
+        var imported = Deserialize(json) ?? throw new FormatException("Die Datei ist kein gültiger Placebook-Export.");
+        _store = merge ? Merge(_store, imported) : imported;
+        await SaveAsync();
+        return imported.Visits.Sum(c => c.Value.Count);
+    }
+
+    public static VisitStore Merge(VisitStore current, VisitStore imported)
+    {
+        var result = new VisitStore();
+        foreach (var (categoryId, visits) in current.Visits)
+            result.Visits[categoryId] = new(visits);
+
+        foreach (var (categoryId, visits) in imported.Visits)
+        {
+            if (!result.Visits.TryGetValue(categoryId, out var target))
+                result.Visits[categoryId] = target = new();
+            foreach (var (placeId, visit) in visits)
+                target.TryAdd(placeId, visit);
+        }
+        return result;
+    }
+
     private async Task SaveAsync()
     {
         await js.InvokeVoidAsync("localStorage.setItem", StorageKey, Serialize(_store));

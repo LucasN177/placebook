@@ -6,7 +6,7 @@ ganz Europa und lässt sich bis auf Stadt- und Straßenebene zoomen.
 
 **Live:** https://lucasn177.github.io/placebook/
 
-> Status: in Entwicklung – Karte und Abhaken funktionieren, siehe [Implementationsplan](docs/IMPLEMENTATION_PLAN.md)
+> Status: Meilensteine M0–M4 umgesetzt (Karte, Abhaken, Standort, Export/Import, Mobil), siehe [Implementationsplan](docs/IMPLEMENTATION_PLAN.md)
 
 ## Features
 
