@@ -286,7 +286,7 @@ jobs:
 - [x] Dark Mode, responsive Layout (mobil: Drawer von unten)
 - [x] OSM-Attribution sichtbar, Datenquelle in Settings
 - [x] `refresh-data.yml`
-- **Done, wenn:** v1.0 getaggt, auf dem Handy benutzbar.
+- **Done, wenn:** v1.0 getaggt (✔ 2026-10-28), auf dem Handy benutzbar.
 
 ### M5+ – Backlog (siehe Abschnitt 5)
 
