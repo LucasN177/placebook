@@ -199,7 +199,7 @@ Der Workflow `refresh-data.yml` führt das monatlich aus und öffnet bei Änderu
 - ✅ Listenansicht mit Suche (Stadt, PLZ, Straße, Land) und Sortierung nach Ort, Land, Entfernung
 - ✅ Statistik-Seite: Kennzahlen, Besuche pro Monat, Fortschritt pro Land
 - ✅ PWA (offline nutzbar, installierbar) – Service Worker aus dem Blazor-Template, angepasst für den Unterpfad
-- ✅ Weitere Kategorien: Burger King, IKEA; Kategorie-Auswahl in der AppBar, App-Farbe folgt der Kategorie
+- ✅ Weitere Kategorien: Burger King, IKEA, Krankenhäuser (`amenity=hospital`), Universitäten (`amenity=university`); Kategorie-Auswahl in der AppBar, App-Farbe folgt der Kategorie
 - Fußballstadien der Profiligen: braucht Wikidata als zweite Quelle (Ligazugehörigkeit steht nicht in OSM, in Wikidata teils veraltet)
 - Bei weltweiten Daten Aufteilung der JSON pro Region
 - ✅ Speicherung in Supabase ohne Login: Sync-Code (UUID) im Header `x-sync-key`, Row Level Security, Warteschlange offline, last write wins pro Ort (`supabase/migrations/001_visits.sql`, `SyncService`)

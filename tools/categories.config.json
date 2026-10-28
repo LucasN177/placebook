@@ -29,6 +29,24 @@
       "icon": "chair",
       "color": "#0058A3",
       "filter": "nwr[\"brand:wikidata\"=\"Q54078\"][\"shop\"=\"furniture\"]"
+    },
+    {
+      "id": "hospitals",
+      "name": "Krankenhäuser",
+      "icon": "local_hospital",
+      "color": "#00897B",
+      "filter": "nwr[\"amenity\"=\"hospital\"]",
+      "perCountry": true,
+      "mergeSameName": true
+    },
+    {
+      "id": "universities",
+      "name": "Universitäten",
+      "icon": "school",
+      "color": "#6A1B9A",
+      "filter": "nwr[\"amenity\"=\"university\"][\"name\"]",
+      "perCountry": true,
+      "mergeSameName": true
     }
   ]
 }

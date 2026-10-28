@@ -11,6 +11,8 @@ public static class CategoryIcons
         "lunch_dining" => Icons.Material.Filled.LunchDining,
         "chair" => Icons.Material.Filled.Chair,
         "local_cafe" => Icons.Material.Filled.LocalCafe,
+        "local_hospital" => Icons.Material.Filled.LocalHospital,
+        "school" => Icons.Material.Filled.School,
         _ => Icons.Material.Filled.Place
     };
 }

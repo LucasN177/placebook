@@ -27,7 +27,8 @@ if (categories.Count == 0)
     return 1;
 }
 
-using var http = new HttpClient { Timeout = TimeSpan.FromMinutes(20) };
+// Timeout pro Anfrage steuert OverpassClient (Europa-weit länger als pro Land)
+using var http = new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
 http.DefaultRequestHeaders.UserAgent.ParseAdd("Placebook-FetchPlaces/1.0 (+https://github.com/LucasN177/placebook)");
 var overpass = new OverpassClient(http);
 
@@ -107,7 +108,10 @@ namespace FetchPlaces
 
     /// <param name="PerCountry">Eine Overpass-Abfrage pro Land statt einer für ganz Europa. Für häufige Tags
     /// (z. B. Krankenhäuser) ist die Gesamtabfrage für die öffentlichen Server zu schwer.</param>
-    record CategoryConfig(string Id, string Name, string Icon, string Color, string Filter, bool PerCountry = false);
+    /// <param name="MergeSameName">Einträge mit gleichem Namen im selben Land und weniger als 1,5 km Abstand
+    /// zusammenfassen – z. B. sind bei Universitäten oft Campus und einzelne Gebäude getaggt.</param>
+    record CategoryConfig(string Id, string Name, string Icon, string Color, string Filter,
+        bool PerCountry = false, bool MergeSameName = false);
 
     record CategoryIndexEntry(string Id, string Name, string Icon, string Color, string File, int Count, DateOnly UpdatedAt);
 
@@ -136,8 +140,12 @@ namespace FetchPlaces
         private static readonly string[] Endpoints =
         [
             "https://overpass-api.de/api/interpreter",
+            "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
             "https://overpass.private.coffee/api/interpreter"
         ];
+
+        private static readonly TimeSpan RegionTimeout = TimeSpan.FromMinutes(20);
+        private static readonly TimeSpan CountryTimeout = TimeSpan.FromMinutes(5);
 
         /// <summary>
         /// Fragt Overpass ab. Die Rohantwort wird im Temp-Ordner zwischengespeichert; mit <paramref name="fromCache"/>
@@ -145,9 +153,20 @@ namespace FetchPlaces
         /// </summary>
         public async Task<List<Place>> FetchPlacesAsync(CategoryConfig category, Region region, bool fromCache)
         {
-            if (!category.PerCountry)
-                return await FetchPartAsync(category, region, $"placebook-overpass-{category.Id}.json", fromCache);
+            var places = category.PerCountry
+                ? await FetchPerCountryAsync(category, region, fromCache)
+                : await FetchPartAsync(category, region, $"placebook-overpass-{category.Id}.json", fromCache, RegionTimeout);
+            if (category.MergeSameName)
+            {
+                var merged = PlaceMerger.MergeSameName(places);
+                Console.WriteLine($"[{category.Id}] {places.Count - merged.Count} Duplikate mit gleichem Namen zusammengefasst");
+                places = merged;
+            }
+            return places;
+        }
 
+        private async Task<List<Place>> FetchPerCountryAsync(CategoryConfig category, Region region, bool fromCache)
+        {
             // Pro Land einzeln abfragen und zwischenspeichern – mit --from-cache setzt ein neuer Lauf bei den
             // fehlenden Ländern fort, statt von vorn zu beginnen
             var places = new Dictionary<string, Place>();
@@ -156,18 +175,19 @@ namespace FetchPlaces
                 var country = region.Countries[i];
                 Console.WriteLine($"[{category.Id}] {country} ({i + 1}/{region.Countries.Count})");
                 var part = await FetchPartAsync(category, region with { Countries = [country] },
-                    $"placebook-overpass-{category.Id}-{country}.json", fromCache);
+                    $"placebook-overpass-{category.Id}-{country}.json", fromCache, CountryTimeout);
                 foreach (var place in part)
                     places.TryAdd(place.Id, place);
             }
             return places.Values.OrderBy(p => p.Id, StringComparer.Ordinal).ToList();
         }
 
-        private async Task<List<Place>> FetchPartAsync(CategoryConfig category, Region region, string cacheFile, bool fromCache)
+        private async Task<List<Place>> FetchPartAsync(CategoryConfig category, Region region, string cacheFile,
+            bool fromCache, TimeSpan timeout)
         {
             var cachePath = Path.Combine(Path.GetTempPath(), cacheFile);
             if (!fromCache || !File.Exists(cachePath))
-                await QueryAsync(BuildQuery(category, region), cachePath);
+                await QueryAsync(BuildQuery(category, region), cachePath, timeout);
             else
                 Console.WriteLine($"[{category.Id}] Verwende Cache {cachePath}");
 
@@ -190,36 +210,64 @@ namespace FetchPlaces
             );
             """;
 
-        private const int AttemptsPerEndpoint = 3;
-        private static readonly TimeSpan RetryDelay = TimeSpan.FromMinutes(1);
+        private const int AttemptsPerEndpoint = 2;
+        private static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(30);
 
         /// <summary>
         /// Overpass ist oft kurzzeitig überlastet (504/429). Deshalb pro Endpunkt mehrere Versuche mit Pause,
         /// bevor auf den nächsten Endpunkt ausgewichen wird.
         /// </summary>
-        private async Task QueryAsync(string query, string targetPath)
+        // Endpunkte, die in diesem Lauf wiederholt versagt haben, werden übersprungen (spart bei vielen
+        // Einzelabfragen pro Land die Wartezeit für einen dauerhaft gestörten Server)
+        private readonly HashSet<string> _skipped = [];
+
+        private async Task QueryAsync(string query, string targetPath, TimeSpan timeout)
         {
-            foreach (var endpoint in Endpoints)
+            var endpoints = Endpoints.Where(e => !_skipped.Contains(e)).ToList();
+            if (endpoints.Count == 0)
+            {
+                _skipped.Clear(); // alle gestört – dann doch wieder alle probieren
+                endpoints = [.. Endpoints];
+            }
+
+            foreach (var endpoint in endpoints)
             {
                 for (var attempt = 1; attempt <= AttemptsPerEndpoint; attempt++)
                 {
                     try
                     {
+                        using var cts = new CancellationTokenSource(timeout);
                         using var response = await http.PostAsync(endpoint,
-                            new FormUrlEncodedContent([new("data", query)]));
+                            new FormUrlEncodedContent([new("data", query)]), cts.Token);
                         response.EnsureSuccessStatusCode();
-                        await using var file = File.Create(targetPath);
-                        await response.Content.CopyToAsync(file);
+                        var body = await response.Content.ReadAsStringAsync(cts.Token);
+                        EnsureComplete(body);
+                        await File.WriteAllTextAsync(targetPath, body, cts.Token);
+                        _skipped.Remove(endpoint);
                         return;
                     }
-                    catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+                    catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException)
                     {
                         Console.Error.WriteLine($"  {endpoint} Versuch {attempt}/{AttemptsPerEndpoint} fehlgeschlagen: {ex.Message}");
                         if (attempt < AttemptsPerEndpoint) await Task.Delay(RetryDelay);
                     }
                 }
+                if (_skipped.Add(endpoint))
+                    Console.Error.WriteLine($"  {endpoint} wird für den Rest des Laufs übersprungen");
             }
             throw new InvalidOperationException("Alle Overpass-Endpunkte sind fehlgeschlagen.");
+        }
+
+        /// <summary>
+        /// Bei Zeitüberschreitung auf dem Server antwortet Overpass trotzdem mit 200 und unvollständigen Daten –
+        /// erkennbar nur an "remark". Solche Antworten nicht speichern.
+        /// </summary>
+        private static void EnsureComplete(string body)
+        {
+            using var json = JsonDocument.Parse(body);
+            if (json.RootElement.TryGetProperty("remark", out var remark)
+                && remark.GetString() is { } text && text.Contains("error", StringComparison.OrdinalIgnoreCase))
+                throw new HttpRequestException($"Unvollständige Antwort: {text}");
         }
 
         // JsonDocument statt JsonNode: OSM-Tags können doppelte Schlüssel enthalten (z. B. "flag"),
@@ -271,6 +319,51 @@ namespace FetchPlaces
             && value.GetString() is { Length: > 0 } text
                 ? text.Trim()
                 : null;
+    }
+
+    static class PlaceMerger
+    {
+        private const double MaxDistanceKm = 1.5;
+
+        /// <summary>
+        /// Fasst Einträge mit gleichem Namen im selben Land zusammen, die näher als 1,5 km beieinander liegen.
+        /// Bevorzugt bleibt die größte Einheit (Relation vor Fläche vor Punkt – also eher der Campus als ein
+        /// einzelnes Gebäude) und ein Eintrag mit Adresse. Weit entfernte Standorte (z. B. zweiter Campus) bleiben.
+        /// </summary>
+        public static List<Place> MergeSameName(List<Place> places)
+        {
+            var result = new List<Place>();
+            foreach (var group in places.GroupBy(p => (p.Cc, Name: p.N?.Trim().ToLowerInvariant())))
+            {
+                if (string.IsNullOrEmpty(group.Key.Name))
+                {
+                    result.AddRange(group);
+                    continue;
+                }
+
+                var kept = new List<Place>();
+                foreach (var place in group
+                             .OrderBy(p => p.Id[0] switch { 'r' => 0, 'w' => 1, _ => 2 })
+                             .ThenBy(p => p.A is null)
+                             .ThenBy(p => p.Id, StringComparer.Ordinal))
+                {
+                    if (!kept.Any(k => DistanceKm(k, place) < MaxDistanceKm))
+                        kept.Add(place);
+                }
+                result.AddRange(kept);
+            }
+            return result.OrderBy(p => p.Id, StringComparer.Ordinal).ToList();
+        }
+
+        private static double DistanceKm(Place a, Place b)
+        {
+            static double Rad(double deg) => deg * Math.PI / 180;
+            var dLat = Rad(b.Lat - a.Lat);
+            var dLon = Rad(b.Lon - a.Lon);
+            var h = Math.Sin(dLat / 2) * Math.Sin(dLat / 2)
+                    + Math.Cos(Rad(a.Lat)) * Math.Cos(Rad(b.Lat)) * Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
+            return 2 * 6371.0 * Math.Asin(Math.Sqrt(h));
+        }
     }
 
     static class PlacesWriter
