@@ -15,4 +15,14 @@ builder.Services.AddScoped<VisitService>();
 builder.Services.AddScoped<BrowserService>();
 builder.Services.AddScoped<CategoryState>();
 
+builder.Services.AddSingleton(TimeProvider.System);
+// Direkt auslesen statt Get<T>(): das reflection-basierte Binden kann im getrimmten Release-Build leer bleiben
+var supabase = new SupabaseOptions
+{
+    Url = builder.Configuration["Supabase:Url"],
+    PublishableKey = builder.Configuration["Supabase:PublishableKey"]
+};
+builder.Services.AddScoped(_ => new SupabaseVisitsClient(new HttpClient(), supabase));
+builder.Services.AddScoped<SyncService>();
+
 await builder.Build().RunAsync();

@@ -1,6 +1,7 @@
 ﻿@inherits LayoutComponentBase
 @implements IDisposable
 @inject CategoryState CategoryState
+@inject SyncService Sync
 
 <MudThemeProvider @ref="_themeProvider" Theme="_theme" @bind-IsDarkMode="_isDarkMode" />
 <MudPopoverProvider />
@@ -37,6 +38,12 @@
         }
 
         <MudSpacer />
+        @if (Sync.Status is not (SyncStatus.NotConfigured or SyncStatus.Disabled))
+        {
+            <MudTooltip Text="@SyncTooltip">
+                <MudIconButton Icon="@SyncIcon" Color="Color.Inherit" Href="settings" aria-label="@SyncTooltip" />
+            </MudTooltip>
+        }
         <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
                        Color="Color.Inherit" OnClick="() => _isDarkMode = !_isDarkMode"
                        aria-label="Farbschema wechseln" />
@@ -59,11 +66,31 @@
     private bool _drawerOpen;
     private bool _isDarkMode;
 
+    private string SyncIcon => Sync.Status switch
+    {
+        SyncStatus.Syncing => Icons.Material.Filled.CloudSync,
+        SyncStatus.Error => Icons.Material.Filled.CloudOff,
+        _ when Sync.PendingCount > 0 => Icons.Material.Filled.CloudUpload,
+        _ => Icons.Material.Filled.CloudDone
+    };
+
+    private string SyncTooltip => Sync.Status switch
+    {
+        SyncStatus.Syncing => "Synchronisiere …",
+        SyncStatus.Error => "Nicht synchronisiert – " + Sync.LastError,
+        _ when Sync.PendingCount > 0 => "Änderungen warten auf Upload",
+        _ => "In der Cloud gespeichert"
+    };
+
     protected override async Task OnInitializedAsync()
     {
         CategoryState.Changed += OnCategoryChanged;
+        Sync.StatusChanged += OnSyncStatusChanged;
         await CategoryState.EnsureLoadedAsync();
+        _ = Sync.StartAsync(); // läuft im Hintergrund; Fehler landen im Sync-Status
     }
+
+    private void OnSyncStatusChanged() => InvokeAsync(StateHasChanged);
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -87,5 +114,9 @@
         PaletteDark = new PaletteDark { Primary = color }
     };
 
-    public void Dispose() => CategoryState.Changed -= OnCategoryChanged;
+    public void Dispose()
+    {
+        CategoryState.Changed -= OnCategoryChanged;
+        Sync.StatusChanged -= OnSyncStatusChanged;
+    }
 }

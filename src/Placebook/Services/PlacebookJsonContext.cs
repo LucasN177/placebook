@@ -12,4 +12,7 @@ namespace Placebook.Services;
 [JsonSerializable(typeof(List<Category>))]
 [JsonSerializable(typeof(PlacesFile))]
 [JsonSerializable(typeof(VisitStore))]
+[JsonSerializable(typeof(List<VisitChange>))]
+[JsonSerializable(typeof(List<VisitPushRow>))]
+[JsonSerializable(typeof(List<VisitPullRow>))]
 public sealed partial class PlacebookJsonContext : JsonSerializerContext;

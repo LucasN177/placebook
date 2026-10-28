@@ -31,8 +31,10 @@ public sealed class CategoryService(HttpClient http)
     private async Task<IReadOnlyList<Place>> LoadPlacesAsync(Category category)
     {
         // updatedAt als Cache-Buster, damit nach einem Daten-Refresh nicht die alte Datei aus dem Browser-Cache kommt
-        var file = await http.GetFromJsonAsync($"data/{category.File}?v={category.UpdatedAt:yyyyMMdd}",
-            PlacebookJsonContext.Default.PlacesFile);
+        // Bewusst als String laden statt GetFromJsonAsync: Der Browser-HttpClient liefert Antworten in .NET 10
+        // gestreamt, und das stückweise Einlesen über JS-Interop dauert bei ~800 KB über 20 s statt ~1 s.
+        var json = await http.GetStringAsync($"data/{category.File}?v={category.UpdatedAt:yyyyMMdd}");
+        var file = JsonSerializer.Deserialize(json, PlacebookJsonContext.Default.PlacesFile);
         return file?.Places ?? [];
     }
 }

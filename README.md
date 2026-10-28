@@ -28,7 +28,7 @@ ganz Europa und lässt sich bis auf Stadt- und Straßenebene zoomen.
 | UI-Komponenten | [MudBlazor](https://mudblazor.com/) |
 | Karte | [Leaflet](https://leafletjs.com/) + Leaflet.markercluster via JS-Interop |
 | Ortsdaten | Statische JSON-Dateien, generiert aus [OpenStreetMap](https://www.openstreetmap.org/) |
-| Speicherung | `localStorage` |
+| Speicherung | `localStorage`, optional synchronisiert mit [Supabase](https://supabase.com/) (ohne Login, über Sync-Code) |
 | Hosting | GitHub Pages via GitHub Actions |
 
 Es gibt kein Backend und keine Laufzeit-API-Aufrufe für Ortsdaten – alles wird statisch ausgeliefert.
@@ -109,9 +109,29 @@ gesetzt werden.
 
 ## Deine Daten
 
-Placebook speichert, welche Orte du besucht hast, ausschließlich im `localStorage` deines Browsers.
-Es werden keine Daten an einen Server übertragen. Wechselst du Gerät oder Browser, nutze
-**Einstellungen → Exportieren / Importieren**.
+Welche Orte du besucht hast, speichert Placebook zuerst im `localStorage` deines Browsers – die App
+funktioniert damit auch offline.
+
+Zusätzlich werden die Besuche in **Supabase** gespeichert (abschaltbar unter *Einstellungen → Cloud-Speicherung*):
+
+- **Kein Login.** Beim ersten Start erzeugt die App einen zufälligen **Sync-Code** (UUID). Alle Besuche liegen
+  unter diesem Code; die Datenbank gibt nur Zeilen heraus, deren Code im Header `x-sync-key` mitgeschickt wird
+  (Row Level Security). Wer den Code kennt, hat Zugriff – er ist wie ein Passwort zu behandeln.
+- **Mehrere Geräte:** Code oder Verbindungslink (`…/settings#sync=<code>`) auf dem anderen Gerät eingeben.
+  Die Besuche beider Geräte werden zusammengeführt; pro Ort gewinnt die neueste Änderung.
+- **Offline:** Änderungen landen in einer Warteschlange und werden hochgeladen, sobald der Server erreichbar ist.
+  Alle zwei Minuten werden außerdem Änderungen anderer Geräte abgeholt.
+- **Export/Import** als JSON-Datei bleibt als zusätzliche Sicherung erhalten.
+
+### Supabase einrichten
+
+1. Projekt anlegen, im *SQL Editor* einmal [`supabase/migrations/001_visits.sql`](supabase/migrations/001_visits.sql) ausführen.
+2. Projekt-URL und **Publishable Key** in [`src/Placebook/wwwroot/appsettings.json`](src/Placebook/wwwroot/appsettings.json)
+   eintragen. Der Publishable Key ist öffentlich und darf ins Repo – niemals den Secret/Service-Role-Key verwenden.
+3. Ohne Eintrag in `appsettings.json` läuft die App rein lokal.
+
+Hinweis: Kostenlose Supabase-Projekte werden nach längerer Inaktivität pausiert und müssen dann im Dashboard
+wieder aktiviert werden; bis dahin arbeitet die App lokal weiter und lädt später nach.
 
 ## Lizenz & Attribution
 

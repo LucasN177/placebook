@@ -119,6 +119,7 @@
     {
         Visits.Changed += StateHasChanged;
         CategoryState.Changed += OnCategoryChanged;
+        Visits.ExternallyChanged += OnVisitsExternallyChanged;
     }
 
     private async Task OnMapReadyAsync()
@@ -141,6 +142,15 @@
             Snackbar.Add($"Orte konnten nicht geladen werden: {ex.Message}", Severity.Error);
         }
     }
+
+    // Import oder Synchronisierung: viele Besuche auf einmal geändert – Marker komplett neu zeichnen
+    private void OnVisitsExternallyChanged() => _ = InvokeAsync(async () =>
+    {
+        if (_selected is not null && Category is not null)
+            _selectedVisit = Visits.GetVisit(Category.Id, _selected.Id);
+        await RenderMarkersAsync();
+        StateHasChanged();
+    });
 
     private void OnCategoryChanged() => _ = InvokeAsync(async () =>
     {
@@ -263,5 +273,6 @@
     {
         Visits.Changed -= StateHasChanged;
         CategoryState.Changed -= OnCategoryChanged;
+        Visits.ExternallyChanged -= OnVisitsExternallyChanged;
     }
 }

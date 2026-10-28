@@ -200,8 +200,9 @@ Der Workflow `refresh-data.yml` führt das monatlich aus und öffnet bei Änderu
 - ✅ Statistik-Seite: Kennzahlen, Besuche pro Monat, Fortschritt pro Land
 - ✅ PWA (offline nutzbar, installierbar) – Service Worker aus dem Blazor-Template, angepasst für den Unterpfad
 - ✅ Weitere Kategorien: Burger King, IKEA; Kategorie-Auswahl in der AppBar, App-Farbe folgt der Kategorie
+- Fußballstadien der Profiligen: braucht Wikidata als zweite Quelle (Ligazugehörigkeit steht nicht in OSM, in Wikidata teils veraltet)
 - Bei weltweiten Daten Aufteilung der JSON pro Region
-- Optionaler Sync über GitHub Gist (Personal Access Token im Browser) – bewusst nicht im MVP
+- ✅ Speicherung in Supabase ohne Login: Sync-Code (UUID) im Header `x-sync-key`, Row Level Security, Warteschlange offline, last write wins pro Ort (`supabase/migrations/001_visits.sql`, `SyncService`)
 - Teilen-Link mit komprimiertem Besucht-Status im URL-Fragment (`#…`)
 
 ---

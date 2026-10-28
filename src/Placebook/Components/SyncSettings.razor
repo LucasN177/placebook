@@ -1,0 +1,155 @@
+@using System.Globalization
+@implements IDisposable
+@inject SyncService Sync
+@inject IJSRuntime JS
+@inject NavigationManager Navigation
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+
+<MudPaper Class="pa-4 mb-4" Elevation="1">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+        <MudText Typo="Typo.h6">Cloud-Speicherung</MudText>
+        <MudSwitch T="bool" Value="Sync.Status != SyncStatus.Disabled" ValueChanged="SetEnabledAsync"
+                   Color="Color.Primary" Disabled="Sync.Status == SyncStatus.NotConfigured" aria-label="Cloud-Speicherung" />
+    </MudStack>
+
+    @if (Sync.Status == SyncStatus.NotConfigured)
+    {
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">Für diese Installation ist keine Cloud-Speicherung eingerichtet.</MudText>
+    }
+    else if (Sync.Status == SyncStatus.Disabled)
+    {
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+            Aus – deine Besuche werden nur in diesem Browser gespeichert.
+        </MudText>
+    }
+    else
+    {
+        <MudStack Spacing="3" Class="mt-1">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                <MudIcon Icon="@StatusIcon" Color="@StatusColor" Size="Size.Small" />
+                <MudText Typo="Typo.body2">@StatusText</MudText>
+            </MudStack>
+
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                Deine Besuche werden zusätzlich in der Cloud gespeichert. Zugriff hat nur, wer deinen Sync-Code kennt –
+                behandle ihn wie ein Passwort. Mit demselben Code siehst du deine Besuche auf allen Geräten.
+            </MudText>
+
+            <MudTextField T="string" Label="Dein Sync-Code" Value="@Sync.SyncKey?.ToString()" ReadOnly="true"
+                          InputType="@(_showKey ? InputType.Text : InputType.Password)" Variant="Variant.Outlined"
+                          Margin="Margin.Dense" Class="pb-sync-key"
+                          Adornment="Adornment.End" AdornmentIcon="@(_showKey ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                          OnAdornmentClick="() => _showKey = !_showKey" AdornmentAriaLabel="Code anzeigen" />
+
+            <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="2">
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                           StartIcon="@Icons.Material.Filled.ContentCopy" OnClick="CopyKeyAsync">Code kopieren</MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                           StartIcon="@Icons.Material.Filled.Link" OnClick="CopyLinkAsync">Link für anderes Gerät</MudButton>
+                <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                           StartIcon="@Icons.Material.Filled.Sync" OnClick="Sync.SyncNowAsync"
+                           Disabled="Sync.Status == SyncStatus.Syncing">Jetzt synchronisieren</MudButton>
+            </MudStack>
+
+            <MudDivider />
+
+            <MudText Typo="Typo.subtitle2">Mit anderem Gerät verbinden</MudText>
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                Gib den Sync-Code eines anderen Geräts ein. Die Besuche beider Geräte werden zusammengeführt.
+            </MudText>
+            <MudStack Row="true" AlignItems="AlignItems.Start" Spacing="2">
+                <MudTextField T="string" @bind-Value="_connectCode" Label="Sync-Code" Variant="Variant.Outlined"
+                              Margin="Margin.Dense" Immediate="true" Class="flex-grow-1" />
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-1"
+                           Disabled="@(!Guid.TryParse(_connectCode?.Trim(), out _))"
+                           OnClick="() => ConnectAsync(_connectCode!)">Verbinden</MudButton>
+            </MudStack>
+        </MudStack>
+    }
+</MudPaper>
+
+@code {
+    private bool _showKey;
+    private string? _connectCode;
+
+    private string StatusIcon => Sync.Status switch
+    {
+        SyncStatus.Syncing => Icons.Material.Filled.CloudSync,
+        SyncStatus.Error => Icons.Material.Filled.CloudOff,
+        _ => Icons.Material.Filled.CloudDone
+    };
+
+    private Color StatusColor => Sync.Status == SyncStatus.Error ? Color.Warning : Color.Success;
+
+    private string StatusText => Sync.Status switch
+    {
+        SyncStatus.Syncing => "Synchronisiere …",
+        SyncStatus.Error => Sync.LastError ?? "Synchronisierung fehlgeschlagen",
+        _ when Sync.PendingCount > 0 => $"{Sync.PendingCount} Änderungen warten auf Upload",
+        _ when Sync.LastSuccess is { } at => $"Synchronisiert um {at.ToLocalTime().ToString("t", CultureInfo.CurrentCulture)} Uhr",
+        _ => "Bereit"
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        Sync.StatusChanged += OnStatusChanged;
+        await Sync.StartAsync();
+
+        // Verbindungslink: …/settings#sync=<code>
+        var fragment = new Uri(Navigation.Uri).Fragment;
+        if (fragment.StartsWith("#sync=", StringComparison.Ordinal))
+        {
+            // Code nicht im Verlauf stehen lassen. Bewusst ohne NavigateTo: das Navigationsereignis würde den
+            // Bestätigungsdialog sofort wieder schließen.
+            await JS.InvokeVoidAsync("history.replaceState", null, "", $"{Navigation.BaseUri}settings");
+            await ConnectAsync(Uri.UnescapeDataString(fragment["#sync=".Length..]));
+        }
+    }
+
+    private async Task ConnectAsync(string code)
+    {
+        if (!Guid.TryParse(code.Trim(), out var key))
+        {
+            Snackbar.Add("Das ist kein gültiger Sync-Code.", Severity.Error);
+            return;
+        }
+        if (key == Sync.SyncKey)
+        {
+            Snackbar.Add("Dieses Gerät verwendet diesen Code bereits.", Severity.Info);
+            return;
+        }
+
+        var confirmed = await Dialogs.ShowMessageBoxAsync(new MessageBoxOptions
+        {
+            Title = "Mit anderem Gerät verbinden",
+            Message = "Dieses Gerät verwendet danach den neuen Sync-Code. Deine Besuche auf diesem Gerät werden mit denen des " +
+                      "anderen Geräts zusammengeführt. Notiere dir vorher deinen bisherigen Code, falls du zurückwechseln möchtest.",
+            YesText = "Verbinden",
+            CancelText = "Abbrechen"
+        });
+        if (confirmed != true) return;
+
+        await Sync.ConnectAsync(key);
+        _connectCode = null;
+        Snackbar.Add("Verbunden – deine Besuche werden zusammengeführt.", Severity.Success);
+    }
+
+    private async Task SetEnabledAsync(bool enabled) => await Sync.SetEnabledAsync(enabled);
+
+    private async Task CopyKeyAsync()
+    {
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", Sync.SyncKey.ToString());
+        Snackbar.Add("Sync-Code kopiert.", Severity.Success);
+    }
+
+    private async Task CopyLinkAsync()
+    {
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", $"{Navigation.BaseUri}settings#sync={Sync.SyncKey}");
+        Snackbar.Add("Link kopiert – öffne ihn auf dem anderen Gerät.", Severity.Success);
+    }
+
+    private void OnStatusChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Sync.StatusChanged -= OnStatusChanged;
+}
