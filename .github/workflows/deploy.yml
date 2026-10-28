@@ -1,0 +1,74 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Nur ein Deployment gleichzeitig; laufende Deployments werden nicht abgebrochen
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  PROJECT: src/Placebook/Placebook.csproj
+  # App liegt unter https://<user>.github.io/<repo>/
+  BASE_HREF: /${{ github.event.repository.name }}/
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore Placebook.sln
+
+      - name: Build
+        run: dotnet build Placebook.sln -c Release --no-restore
+
+      - name: Test
+        run: dotnet test Placebook.sln -c Release --no-build
+
+      - name: Publish
+        run: dotnet publish $PROJECT -c Release --no-restore -o out
+
+      - name: Prepare for GitHub Pages
+        working-directory: out/wwwroot
+        run: |
+          # Base-Pfad auf das Repo-Unterverzeichnis setzen
+          sed -i "s|<base href=\"/\" />|<base href=\"$BASE_HREF\" />|" index.html
+          grep -q "<base href=\"$BASE_HREF\" />" index.html
+          # Jekyll würde Ordner mit Unterstrich (_framework, _content) ignorieren
+          touch .nojekyll
+
+      - name: Upload Pages artifact
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: out/wwwroot
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
