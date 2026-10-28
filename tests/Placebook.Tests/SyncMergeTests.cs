@@ -66,18 +66,40 @@ public class SyncMergeTests
     }
 
     [Fact]
-    public void PushRow_SerializesSnakeCase_WithExplicitNulls()
+    public void PushRow_ForSyncCode_SerializesSnakeCase_WithExplicitNulls()
     {
         // PostgREST verlangt bei Mehrfach-Inserts in jeder Zeile dieselben Spalten
-        var row = new VisitPushRow(Guid.Empty, "mcdonalds", "n1", null, null, true, T0);
+        var row = new VisitPushRow(Guid.Empty, null, "mcdonalds", "n1", null, null, true, T0);
 
         var json = JsonSerializer.Serialize(new List<VisitPushRow> { row }, PlacebookJsonContext.Default.ListVisitPushRow);
 
         Assert.Contains("\"sync_key\":\"00000000-0000-0000-0000-000000000000\"", json);
+        Assert.DoesNotContain("user_id", json);
         Assert.Contains("\"visited_at\":null", json);
         Assert.Contains("\"note\":null", json);
         Assert.Contains("\"deleted\":true", json);
         Assert.Contains("\"updated_at\":\"2026-10-28T10:00:00+00:00\"", json);
+    }
+
+    [Fact]
+    public void PushRow_ForAccount_HasUserId_AndNoSyncKey()
+    {
+        var userId = Guid.Parse("11111111-2222-3333-4444-555555555555");
+        var row = new VisitPushRow(null, userId, "ikea", "w9", new DateOnly(2026, 9, 1), "x", false, T0);
+
+        var json = JsonSerializer.Serialize(new List<VisitPushRow> { row }, PlacebookJsonContext.Default.ListVisitPushRow);
+
+        Assert.Contains("\"user_id\":\"11111111-2222-3333-4444-555555555555\"", json);
+        Assert.DoesNotContain("sync_key", json);
+    }
+
+    [Fact]
+    public void SyncTarget_IdsDistinguishCodeAndAccount()
+    {
+        var id = Guid.NewGuid();
+
+        Assert.Equal($"code:{id}", new SyncTarget.Code(id).Id);
+        Assert.Equal($"user:{id}", new SyncTarget.Account(id).Id);
     }
 
     [Fact]

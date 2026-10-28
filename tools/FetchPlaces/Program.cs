@@ -105,7 +105,9 @@ namespace FetchPlaces
         public bool Contains(double lat, double lon) => lat >= South && lat <= North && lon >= West && lon <= East;
     }
 
-    record CategoryConfig(string Id, string Name, string Icon, string Color, string Filter);
+    /// <param name="PerCountry">Eine Overpass-Abfrage pro Land statt einer für ganz Europa. Für häufige Tags
+    /// (z. B. Krankenhäuser) ist die Gesamtabfrage für die öffentlichen Server zu schwer.</param>
+    record CategoryConfig(string Id, string Name, string Icon, string Color, string Filter, bool PerCountry = false);
 
     record CategoryIndexEntry(string Id, string Name, string Icon, string Color, string File, int Count, DateOnly UpdatedAt);
 
@@ -143,7 +145,27 @@ namespace FetchPlaces
         /// </summary>
         public async Task<List<Place>> FetchPlacesAsync(CategoryConfig category, Region region, bool fromCache)
         {
-            var cachePath = Path.Combine(Path.GetTempPath(), $"placebook-overpass-{category.Id}.json");
+            if (!category.PerCountry)
+                return await FetchPartAsync(category, region, $"placebook-overpass-{category.Id}.json", fromCache);
+
+            // Pro Land einzeln abfragen und zwischenspeichern – mit --from-cache setzt ein neuer Lauf bei den
+            // fehlenden Ländern fort, statt von vorn zu beginnen
+            var places = new Dictionary<string, Place>();
+            for (var i = 0; i < region.Countries.Count; i++)
+            {
+                var country = region.Countries[i];
+                Console.WriteLine($"[{category.Id}] {country} ({i + 1}/{region.Countries.Count})");
+                var part = await FetchPartAsync(category, region with { Countries = [country] },
+                    $"placebook-overpass-{category.Id}-{country}.json", fromCache);
+                foreach (var place in part)
+                    places.TryAdd(place.Id, place);
+            }
+            return places.Values.OrderBy(p => p.Id, StringComparer.Ordinal).ToList();
+        }
+
+        private async Task<List<Place>> FetchPartAsync(CategoryConfig category, Region region, string cacheFile, bool fromCache)
+        {
+            var cachePath = Path.Combine(Path.GetTempPath(), cacheFile);
             if (!fromCache || !File.Exists(cachePath))
                 await QueryAsync(BuildQuery(category, region), cachePath);
             else

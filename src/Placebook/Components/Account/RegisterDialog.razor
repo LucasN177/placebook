@@ -1,0 +1,95 @@
+@inject AuthService Auth
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Konto erstellen</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_awaitingConfirmation)
+        {
+            <MudStack Spacing="3" Class="pb-auth-form">
+                <MudAlert Severity="Severity.Success">
+                    Fast geschafft! Wir haben dir eine E-Mail an <b>@_email</b> geschickt. Bestätige darin deine Adresse,
+                    danach bist du automatisch angemeldet.
+                </MudAlert>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="() => Dialog.Close()">OK</MudButton>
+            </MudStack>
+        }
+        else
+        {
+            <form @onsubmit="RegisterAsync" @onsubmit:preventDefault="true" class="pb-auth-form">
+                <MudStack Spacing="3">
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                        Mit einem Konto sind deine Besuche auf allen Geräten verfügbar, auf denen du angemeldet bist.
+                    </MudText>
+
+                    @if (_error is not null)
+                    {
+                        <MudAlert Severity="Severity.Error" Dense="true">@_error</MudAlert>
+                    }
+
+                    <MudTextField T="string" @bind-Value="_email" Label="E-Mail" InputType="InputType.Email" Immediate="true"
+                                  Variant="Variant.Outlined" AutoFocus="true" autocomplete="email" />
+                    <MudTextField T="string" @bind-Value="_password" Label="Passwort" Immediate="true" Variant="Variant.Outlined"
+                                  InputType="@(_showPassword ? InputType.Text : InputType.Password)" autocomplete="new-password"
+                                  HelperText="@($"Mindestens {AuthText.MinPasswordLength} Zeichen")"
+                                  Adornment="Adornment.End"
+                                  AdornmentIcon="@(_showPassword ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                                  OnAdornmentClick="() => _showPassword = !_showPassword" AdornmentAriaLabel="Passwort anzeigen" />
+                    <MudTextField T="string" @bind-Value="_confirmation" Label="Passwort wiederholen" Immediate="true"
+                                  Variant="Variant.Outlined" InputType="@(_showPassword ? InputType.Text : InputType.Password)"
+                                  autocomplete="new-password" />
+
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                               Disabled="_busy">
+                        @if (_busy)
+                        {
+                            <MudProgressCircular Indeterminate="true" Size="Size.Small" Class="mr-2" />
+                        }
+                        Konto erstellen
+                    </MudButton>
+
+                    <MudButton Variant="Variant.Text" Size="Size.Small" Color="Color.Primary" Class="align-self-end"
+                               OnClick="() => Dialog.Close(DialogResult.Ok(AccountDialogs.SwitchToLogin))">
+                        Ich habe schon ein Konto
+                    </MudButton>
+                </MudStack>
+            </form>
+        }
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
+
+    private string? _email;
+    private string? _password;
+    private string? _confirmation;
+    private bool _showPassword;
+    private bool _busy;
+    private bool _awaitingConfirmation;
+    private string? _error;
+
+    private async Task RegisterAsync()
+    {
+        _error = AuthText.ValidateEmail(_email) ?? AuthText.ValidateNewPassword(_password, _confirmation);
+        if (_error is not null) return;
+
+        _busy = true;
+        try
+        {
+            if (await Auth.SignUpAsync(_email!, _password!))
+                Dialog.Close(DialogResult.Ok(AccountDialogs.SignedIn));
+            else
+                _awaitingConfirmation = true;
+        }
+        catch (AuthException ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

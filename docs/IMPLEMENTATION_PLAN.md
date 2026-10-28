@@ -203,6 +203,7 @@ Der Workflow `refresh-data.yml` führt das monatlich aus und öffnet bei Änderu
 - Fußballstadien der Profiligen: braucht Wikidata als zweite Quelle (Ligazugehörigkeit steht nicht in OSM, in Wikidata teils veraltet)
 - Bei weltweiten Daten Aufteilung der JSON pro Region
 - ✅ Speicherung in Supabase ohne Login: Sync-Code (UUID) im Header `x-sync-key`, Row Level Security, Warteschlange offline, last write wins pro Ort (`supabase/migrations/001_visits.sql`, `SyncService`)
+- ✅ Konten mit E-Mail + Passwort (Supabase Auth): Konto-Seite, Dialoge für Anmelden/Registrieren/Passwort, Sitzung im localStorage mit automatischer Erneuerung, Besuche in `account_visits` (`002_account_visits.sql`, `AuthService`)
 - Teilen-Link mit komprimiertem Besucht-Status im URL-Fragment (`#…`)
 
 ---

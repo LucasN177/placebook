@@ -1,0 +1,42 @@
+@using System.Globalization
+@implements IDisposable
+@inject SyncService Sync
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+    <MudIcon Icon="@Icon" Color="@IconColor" Size="Size.Small" />
+    <MudText Typo="Typo.body2">@Text</MudText>
+</MudStack>
+
+@code {
+    private string Icon => Sync.Status switch
+    {
+        SyncStatus.Syncing => Icons.Material.Filled.CloudSync,
+        SyncStatus.Error or SyncStatus.Disabled => Icons.Material.Filled.CloudOff,
+        _ when Sync.PendingCount > 0 => Icons.Material.Filled.CloudUpload,
+        _ => Icons.Material.Filled.CloudDone
+    };
+
+    private Color IconColor => Sync.Status switch
+    {
+        SyncStatus.Error => Color.Warning,
+        SyncStatus.Disabled or SyncStatus.NotConfigured => Color.Default,
+        _ => Color.Success
+    };
+
+    private string Text => Sync.Status switch
+    {
+        SyncStatus.NotConfigured => "Cloud-Speicherung ist nicht eingerichtet",
+        SyncStatus.Disabled => "Aus – Besuche liegen nur in diesem Browser",
+        SyncStatus.Syncing => "Synchronisiere …",
+        SyncStatus.Error => Sync.LastError ?? "Synchronisierung fehlgeschlagen",
+        _ when Sync.PendingCount > 0 => $"{Sync.PendingCount} Änderungen warten auf Upload",
+        _ when Sync.LastSuccess is { } at => $"Synchronisiert um {at.ToLocalTime().ToString("t", CultureInfo.CurrentCulture)} Uhr",
+        _ => "Bereit"
+    };
+
+    protected override void OnInitialized() => Sync.StatusChanged += OnStatusChanged;
+
+    private void OnStatusChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Sync.StatusChanged -= OnStatusChanged;
+}

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Placebook.Models;
+using Placebook.Services.Auth;
 
 namespace Placebook.Services;
 
@@ -15,4 +16,12 @@ namespace Placebook.Services;
 [JsonSerializable(typeof(List<VisitChange>))]
 [JsonSerializable(typeof(List<VisitPushRow>))]
 [JsonSerializable(typeof(List<VisitPullRow>))]
+[JsonSerializable(typeof(AuthSession))]
+[JsonSerializable(typeof(AuthTokenResponse))]
+[JsonSerializable(typeof(AuthUserResponse))]
+[JsonSerializable(typeof(AuthErrorResponse))]
+[JsonSerializable(typeof(AuthCredentials))]
+[JsonSerializable(typeof(AuthRefreshRequest))]
+[JsonSerializable(typeof(AuthEmailRequest))]
+[JsonSerializable(typeof(AuthPasswordRequest))]
 public sealed partial class PlacebookJsonContext : JsonSerializerContext;

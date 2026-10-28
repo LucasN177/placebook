@@ -2,6 +2,10 @@
 @implements IDisposable
 @inject CategoryState CategoryState
 @inject SyncService Sync
+@inject AuthService Auth
+@inject AccountDialogs AccountDialogs
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
 
 <MudThemeProvider @ref="_themeProvider" Theme="_theme" @bind-IsDarkMode="_isDarkMode" />
 <MudPopoverProvider />
@@ -47,6 +51,23 @@
         <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
                        Color="Color.Inherit" OnClick="() => _isDarkMode = !_isDarkMode"
                        aria-label="Farbschema wechseln" />
+        @if (Auth.IsConfigured)
+        {
+            @if (Auth.User is { } user)
+            {
+                <MudTooltip Text="@($"Angemeldet als {user.Email}")">
+                    <MudIconButton Icon="@Icons.Material.Filled.AccountCircle" Color="Color.Inherit" Href="account"
+                                   aria-label="Konto" />
+                </MudTooltip>
+            }
+            else
+            {
+                <MudTooltip Text="Anmelden">
+                    <MudIconButton Icon="@Icons.Material.Outlined.AccountCircle" Color="Color.Inherit"
+                                   OnClick="AccountDialogs.SignInAsync" aria-label="Anmelden" />
+                </MudTooltip>
+            }
+        }
     </MudAppBar>
 
     <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Variant="DrawerVariant.Temporary" Elevation="2">
@@ -86,6 +107,7 @@
     {
         CategoryState.Changed += OnCategoryChanged;
         Sync.StatusChanged += OnSyncStatusChanged;
+        Auth.Changed += OnSyncStatusChanged;
         await CategoryState.EnsureLoadedAsync();
         _ = Sync.StartAsync(); // läuft im Hintergrund; Fehler landen im Sync-Status
     }
@@ -98,6 +120,34 @@
         {
             _isDarkMode = await _themeProvider.GetSystemDarkModeAsync();
             StateHasChanged();
+            await HandleAuthRedirectAsync();
+        }
+    }
+
+    /// <summary>Rückkehr aus einer Supabase-Mail (Registrierung bestätigt, Passwort vergessen).</summary>
+    private async Task HandleAuthRedirectAsync()
+    {
+        if (!Auth.IsConfigured) return;
+        try
+        {
+            switch (await Auth.HandleRedirectAsync(Navigation.Uri))
+            {
+                case { Kind: AuthRedirectKind.Recovery }:
+                    await AccountDialogs.ChangePasswordAsync(isRecovery: true);
+                    break;
+                case { Kind: AuthRedirectKind.SignedIn }:
+                    Snackbar.Add("E-Mail bestätigt – du bist angemeldet.", Severity.Success);
+                    break;
+                case { Kind: AuthRedirectKind.Error } error:
+                    Snackbar.Add(error.ErrorCode == "otp_expired"
+                        ? "Der Link ist abgelaufen oder wurde schon verwendet. Fordere bitte einen neuen an."
+                        : $"Der Link hat nicht funktioniert: {error.ErrorDescription}", Severity.Error);
+                    break;
+            }
+        }
+        catch (AuthException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
         }
     }
 
@@ -118,5 +168,6 @@
     {
         CategoryState.Changed -= OnCategoryChanged;
         Sync.StatusChanged -= OnSyncStatusChanged;
+        Auth.Changed -= OnSyncStatusChanged;
     }
 }

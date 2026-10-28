@@ -6,7 +6,7 @@ ganz Europa und lässt sich bis auf Stadt- und Straßenebene zoomen.
 
 **Live:** https://lucasn177.github.io/placebook/
 
-> Status: Meilensteine M0–M5 umgesetzt (Karte, Liste, Statistik, Standort, Export/Import, PWA), siehe [Implementationsplan](docs/IMPLEMENTATION_PLAN.md)
+> Status: Meilensteine M0–M5 umgesetzt (Karte, Liste, Statistik, Standort, Export/Import, PWA, Konto), siehe [Implementationsplan](docs/IMPLEMENTATION_PLAN.md)
 
 ## Features
 
@@ -123,12 +123,30 @@ Zusätzlich werden die Besuche in **Supabase** gespeichert (abschaltbar unter *E
   Alle zwei Minuten werden außerdem Änderungen anderer Geräte abgeholt.
 - **Export/Import** als JSON-Datei bleibt als zusätzliche Sicherung erhalten.
 
+### Konto (optional)
+
+Unter **Konto** kann man sich mit E-Mail und Passwort registrieren und anmelden (Supabase Auth).
+
+- Angemeldet liegen die Besuche im eigenen Konto (Tabelle `account_visits`, abgesichert über `auth.uid()`) und sind
+  auf jedem Gerät verfügbar, auf dem man angemeldet ist. Sync-Code und Konto sind strikt getrennt.
+- Beim **Anmelden** werden die bisher auf dem Gerät gesammelten Besuche ins Konto übernommen.
+- Die Sitzung (Access- und Refresh-Token) liegt im `localStorage` und wird vor Ablauf automatisch erneuert –
+  man bleibt angemeldet, bis man sich abmeldet. Ist die Anmeldung endgültig abgelaufen, pausiert die
+  Synchronisierung, bis man sich erneut anmeldet.
+- Beim **Abmelden** wird zuerst alles hochgeladen, dann werden die Besuche vom Gerät entfernt (sie bleiben im Konto).
+- **Passwort vergessen** verschickt eine Mail mit Link; darüber legt man in der App ein neues Passwort fest.
+
 ### Supabase einrichten
 
-1. Projekt anlegen, im *SQL Editor* einmal [`supabase/migrations/001_visits.sql`](supabase/migrations/001_visits.sql) ausführen.
-2. Projekt-URL und **Publishable Key** in [`src/Placebook/wwwroot/appsettings.json`](src/Placebook/wwwroot/appsettings.json)
+1. Projekt anlegen, im *SQL Editor* nacheinander einmal ausführen:
+   [`001_visits.sql`](supabase/migrations/001_visits.sql) (Sync-Code) und
+   [`002_account_visits.sql`](supabase/migrations/002_account_visits.sql) (Konten).
+2. *Authentication → URL Configuration*: **Site URL** `https://lucasn177.github.io/placebook/`, unter
+   **Redirect URLs** `https://lucasn177.github.io/placebook/**` und `http://localhost:5118/**` eintragen.
+   Dorthin führen die Links aus Bestätigungs- und „Passwort vergessen“-Mails zurück.
+3. Projekt-URL und **Publishable Key** in [`src/Placebook/wwwroot/appsettings.json`](src/Placebook/wwwroot/appsettings.json)
    eintragen. Der Publishable Key ist öffentlich und darf ins Repo – niemals den Secret/Service-Role-Key verwenden.
-3. Ohne Eintrag in `appsettings.json` läuft die App rein lokal.
+4. Ohne Eintrag in `appsettings.json` läuft die App rein lokal.
 
 Hinweis: Kostenlose Supabase-Projekte werden nach längerer Inaktivität pausiert und müssen dann im Dashboard
 wieder aktiviert werden; bis dahin arbeitet die App lokal weiter und lädt später nach.

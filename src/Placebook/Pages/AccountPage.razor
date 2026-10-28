@@ -1,0 +1,142 @@
+@page "/account"
+@implements IDisposable
+@inject AuthService Auth
+@inject SyncService Sync
+@inject VisitService Visits
+@inject CategoryService Categories
+@inject AccountDialogs AccountDialogs
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+
+<PageTitle>Konto – Placebook</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-6 mb-8">
+    <MudText Typo="Typo.h5" GutterBottom="true">Konto</MudText>
+
+    @if (!Auth.IsConfigured)
+    {
+        <MudAlert Severity="Severity.Info">Für diese Installation ist keine Anmeldung eingerichtet.</MudAlert>
+    }
+    else if (Auth.User is { } user)
+    {
+        <MudPaper Class="pa-4 mb-4" Elevation="1">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                <MudAvatar Color="Color.Primary" Size="Size.Large">@Initial(user)</MudAvatar>
+                <MudStack Spacing="0" Class="pb-ellipsis">
+                    <MudText Typo="Typo.subtitle1" Class="pb-ellipsis"><b>@user.Email</b></MudText>
+                    @if (user.CreatedAt is { } created)
+                    {
+                        <MudText Typo="Typo.body2" Class="mud-text-secondary">Dabei seit @created.ToLocalTime().ToString("d")</MudText>
+                    }
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+
+        <MudPaper Class="pa-4 mb-4" Elevation="1">
+            <MudText Typo="Typo.h6" GutterBottom="true">Deine Besuche</MudText>
+            <MudText Typo="Typo.body2" Class="mud-text-secondary mb-2">
+                Deine Besuche werden mit deinem Konto synchronisiert und sind auf jedem Gerät verfügbar, auf dem du
+                angemeldet bist. Du bleibst auf diesem Gerät angemeldet, bis du dich abmeldest.
+            </MudText>
+            @foreach (var category in _categories)
+            {
+                <MudStack Row="true" Justify="Justify.SpaceBetween">
+                    <MudText Typo="Typo.body2">@category.Name</MudText>
+                    <MudText Typo="Typo.body2"><b>@Visits.CountVisited(category.Id).ToString("N0")</b> von @category.Count.ToString("N0")</MudText>
+                </MudStack>
+            }
+            <MudDivider Class="my-3" />
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Wrap="Wrap.Wrap">
+                <SyncStatusLine />
+                <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Sync"
+                           OnClick="Sync.SyncNowAsync" Disabled="Sync.Status == SyncStatus.Syncing">Jetzt synchronisieren</MudButton>
+            </MudStack>
+        </MudPaper>
+
+        <MudPaper Class="pa-4" Elevation="1">
+            <MudText Typo="Typo.h6" GutterBottom="true">Sicherheit</MudText>
+            <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="2">
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Key"
+                           OnClick="() => AccountDialogs.ChangePasswordAsync()">Passwort ändern</MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.Logout"
+                           OnClick="SignOutAsync" Disabled="_signingOut">Abmelden</MudButton>
+            </MudStack>
+        </MudPaper>
+    }
+    else
+    {
+        <MudPaper Class="pa-6" Elevation="1">
+            <MudStack AlignItems="AlignItems.Center" Spacing="3">
+                <MudIcon Icon="@Icons.Material.Filled.AccountCircle" Color="Color.Primary" Style="font-size:64px" />
+                <MudText Typo="Typo.h6" Align="Align.Center">Deine Besuche auf allen Geräten</MudText>
+                <MudText Typo="Typo.body2" Align="Align.Center" Class="mud-text-secondary">
+                    Melde dich mit E-Mail und Passwort an, damit deine Besuche in deinem Konto gespeichert werden.
+                    Besuche, die du bisher auf diesem Gerät gesammelt hast, werden dabei übernommen.
+                </MudText>
+                <MudStack Row="true" Spacing="2" Wrap="Wrap.Wrap" Justify="Justify.Center">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Login"
+                               OnClick="AccountDialogs.SignInAsync">Anmelden</MudButton>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PersonAdd"
+                               OnClick="AccountDialogs.RegisterAsync">Konto erstellen</MudButton>
+                </MudStack>
+                <MudText Typo="Typo.caption" Align="Align.Center" Class="mud-text-secondary">
+                    Ohne Konto funktioniert Placebook weiterhin – deine Besuche werden dann über deinen Sync-Code gespeichert
+                    (siehe <MudLink Href="settings" Typo="Typo.caption">Einstellungen</MudLink>).
+                </MudText>
+            </MudStack>
+        </MudPaper>
+    }
+</MudContainer>
+
+@code {
+    private IReadOnlyList<Category> _categories = [];
+    private bool _signingOut;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Auth.Changed += OnChanged;
+        Visits.Changed += OnChanged;
+        await Visits.EnsureLoadedAsync();
+        await Auth.InitializeAsync();
+        _categories = await Categories.GetCategoriesAsync();
+    }
+
+    private async Task SignOutAsync()
+    {
+        _signingOut = true;
+        try
+        {
+            var unsynced = await Sync.HasUnsyncedChangesAsync();
+            var confirmed = await Dialogs.ShowMessageBoxAsync(new MessageBoxOptions
+            {
+                Title = "Abmelden",
+                MarkupMessage = new MarkupString(unsynced
+                    ? $"<b>Achtung:</b> {Sync.PendingCount} Änderungen konnten noch nicht hochgeladen werden " +
+                      "und gehen beim Abmelden verloren. Prüfe deine Internetverbindung oder versuche es später erneut."
+                    : "Deine Besuche bleiben in deinem Konto gespeichert und werden von diesem Gerät entfernt. " +
+                      "Wenn du dich wieder anmeldest, sind sie sofort wieder da."),
+                YesText = unsynced ? "Trotzdem abmelden" : "Abmelden",
+                CancelText = "Abbrechen"
+            });
+            if (confirmed != true) return;
+
+            await Sync.SignOutAsync();
+            Snackbar.Add("Du bist abgemeldet.", Severity.Info);
+        }
+        finally
+        {
+            _signingOut = false;
+        }
+    }
+
+    private static string Initial(AuthUser user) =>
+        string.IsNullOrEmpty(user.Email) ? "?" : user.Email[..1].ToUpperInvariant();
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Auth.Changed -= OnChanged;
+        Visits.Changed -= OnChanged;
+    }
+}

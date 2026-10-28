@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using MudBlazor.Services;
 using Placebook;
 using Placebook.Services;
+using Placebook.Services.Auth;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -23,6 +24,9 @@ var supabase = new SupabaseOptions
     PublishableKey = builder.Configuration["Supabase:PublishableKey"]
 };
 builder.Services.AddScoped(_ => new SupabaseVisitsClient(new HttpClient(), supabase));
+builder.Services.AddScoped(_ => new SupabaseAuthClient(new HttpClient(), supabase));
+builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<SyncService>();
+builder.Services.AddScoped<Placebook.Components.Account.AccountDialogs>();
 
 await builder.Build().RunAsync();

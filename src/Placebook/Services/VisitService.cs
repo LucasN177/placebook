@@ -126,6 +126,14 @@ public sealed class VisitService(IJSRuntime js, TimeProvider time)
         ExternallyChanged?.Invoke();
     }
 
+    /// <summary>Entfernt alle Besuche von diesem Gerät (z. B. beim Abmelden – sie bleiben im Konto erhalten).</summary>
+    public async Task ClearAsync()
+    {
+        _store = new VisitStore();
+        await SaveAsync();
+        ExternallyChanged?.Invoke();
+    }
+
     public static VisitStore Merge(VisitStore current, VisitStore imported)
     {
         var result = new VisitStore();
