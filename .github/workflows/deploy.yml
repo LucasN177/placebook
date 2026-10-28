@@ -52,6 +52,16 @@ jobs:
           # Base-Pfad auf das Repo-Unterverzeichnis setzen
           sed -i "s|<base href=\"/\" />|<base href=\"$BASE_HREF\" />|" index.html
           grep -q "<base href=\"$BASE_HREF\" />" index.html
+          # Der Service Worker prüft beim Cachen den SHA-256-Hash jeder Datei. index.html wurde gerade
+          # geändert, also muss ihr Hash im Assets-Manifest nachgezogen werden – sonst schlägt die
+          # Installation fehl und die App ist nicht offline nutzbar.
+          HASH="sha256-$(openssl dgst -sha256 -binary index.html | openssl base64 -A)" node -e '
+            const fs = require("fs");
+            const file = "service-worker-assets.js";
+            const src = fs.readFileSync(file, "utf8");
+            const out = src.replace(/("hash": ")[^"]+(",\s*"url": "index\.html")/, `$1${process.env.HASH}$2`);
+            if (out === src) throw new Error("Hash von index.html im Assets-Manifest nicht gefunden");
+            fs.writeFileSync(file, out);'
           # Jekyll würde Ordner mit Unterstrich (_framework, _content) ignorieren
           touch .nojekyll
 
