@@ -150,22 +150,33 @@ namespace FetchPlaces
             );
             """;
 
+        private const int AttemptsPerEndpoint = 3;
+        private static readonly TimeSpan RetryDelay = TimeSpan.FromMinutes(1);
+
+        /// <summary>
+        /// Overpass ist oft kurzzeitig überlastet (504/429). Deshalb pro Endpunkt mehrere Versuche mit Pause,
+        /// bevor auf den nächsten Endpunkt ausgewichen wird.
+        /// </summary>
         private async Task QueryAsync(string query, string targetPath)
         {
             foreach (var endpoint in Endpoints)
             {
-                try
+                for (var attempt = 1; attempt <= AttemptsPerEndpoint; attempt++)
                 {
-                    using var response = await http.PostAsync(endpoint,
-                        new FormUrlEncodedContent([new("data", query)]));
-                    response.EnsureSuccessStatusCode();
-                    await using var file = File.Create(targetPath);
-                    await response.Content.CopyToAsync(file);
-                    return;
-                }
-                catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
-                {
-                    Console.Error.WriteLine($"  {endpoint} fehlgeschlagen: {ex.Message}");
+                    try
+                    {
+                        using var response = await http.PostAsync(endpoint,
+                            new FormUrlEncodedContent([new("data", query)]));
+                        response.EnsureSuccessStatusCode();
+                        await using var file = File.Create(targetPath);
+                        await response.Content.CopyToAsync(file);
+                        return;
+                    }
+                    catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+                    {
+                        Console.Error.WriteLine($"  {endpoint} Versuch {attempt}/{AttemptsPerEndpoint} fehlgeschlagen: {ex.Message}");
+                        if (attempt < AttemptsPerEndpoint) await Task.Delay(RetryDelay);
+                    }
                 }
             }
             throw new InvalidOperationException("Alle Overpass-Endpunkte sind fehlgeschlagen.");

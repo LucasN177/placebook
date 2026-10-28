@@ -41,39 +41,87 @@
         content: "An error has occurred."
     }
 
-.loading-progress {
-    position: absolute;
-    display: block;
-    width: 8rem;
-    height: 8rem;
-    inset: 20vh 0 auto 0;
-    margin: 0 auto 0 auto;
-}
+/* ---------- Ladebildschirm (bis Blazor gestartet ist) ---------- */
 
-    .loading-progress circle {
-        fill: none;
-        stroke: #e0e0e0;
-        stroke-width: 0.6rem;
-        transform-origin: 50% 50%;
-        transform: rotate(-90deg);
-    }
-
-        .loading-progress circle:last-child {
-            stroke: #1b6ec2;
-            stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * 0.8), 500%;
-            transition: stroke-dasharray 0.05s ease-in-out;
-        }
-
-.loading-progress-text {
-    position: absolute;
+.pb-splash {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 16px;
+    background: radial-gradient(circle at 50% 40%, #27507f 0%, #1E3A5F 45%, #12253d 100%);
+    color: #fff;
+    font-family: Roboto, "Segoe UI", Helvetica, Arial, sans-serif;
     text-align: center;
-    font-weight: bold;
-    inset: calc(20vh + 3.25rem) 0 auto 0.2rem;
 }
 
-    .loading-progress-text:after {
-        content: var(--blazor-load-percentage-text, "Loading");
+.pb-splash-ring {
+    width: 132px;
+    height: 132px;
+    margin-bottom: 18px;
+}
+
+.pb-splash-track,
+.pb-splash-progress {
+    fill: none;
+    stroke-width: 5;
+}
+
+.pb-splash-track {
+    stroke: rgba(255, 255, 255, 0.14);
+}
+
+/* Umfang 2π·54 ≈ 339,3 Einheiten = 282,7 % der viewBox-Größe; Start oben, im Uhrzeigersinn */
+.pb-splash-progress {
+    stroke: #fff;
+    stroke-linecap: round;
+    stroke-dasharray: calc(2.827 * var(--blazor-load-percentage, 0%)), 1000%;
+    transform: rotate(-90deg);
+    transform-origin: 50% 50%;
+    transition: stroke-dasharray 0.15s ease-out;
+}
+
+.pb-splash-pin {
+    fill: #fff;
+    transform-origin: 60px 90px;
+    animation: pb-splash-bounce 1.6s ease-in-out infinite;
+}
+
+.pb-splash-title {
+    font-size: 30px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+}
+
+.pb-splash-subtitle {
+    font-size: 15px;
+    opacity: 0.75;
+}
+
+.pb-splash-percent {
+    margin-top: 22px;
+    font-size: 13px;
+    opacity: 0.6;
+    font-variant-numeric: tabular-nums;
+}
+
+    .pb-splash-percent:after {
+        content: "Lade App … " var(--blazor-load-percentage-text, "");
     }
+
+@keyframes pb-splash-bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pb-splash-pin { animation: none; }
+    .pb-splash-progress { transition: none; }
+}
 
 code {
     color: #c02d76;

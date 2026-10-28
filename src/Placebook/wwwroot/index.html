@@ -36,11 +36,19 @@
 
 <body>
     <div id="app">
-        <svg class="loading-progress">
-            <circle r="40%" cx="50%" cy="50%" />
-            <circle r="40%" cx="50%" cy="50%" />
-        </svg>
-        <div class="loading-progress-text"></div>
+        <!-- Ladebildschirm, bis Blazor gestartet ist. Der Ring zeigt den echten Ladefortschritt
+             (--blazor-load-percentage wird von Blazor gesetzt). -->
+        <div class="pb-splash" role="status" aria-live="polite">
+            <svg class="pb-splash-ring" viewBox="0 0 120 120" aria-hidden="true">
+                <circle class="pb-splash-track" cx="60" cy="60" r="54" />
+                <circle class="pb-splash-progress" cx="60" cy="60" r="54" />
+                <path class="pb-splash-pin" fill-rule="evenodd"
+                      d="M60 90 L44 66 A20 20 0 1 1 76 66 Z M52 54 a8 8 0 1 0 16 0 a8 8 0 1 0 -16 0 Z" />
+            </svg>
+            <div class="pb-splash-title">Placebook</div>
+            <div class="pb-splash-subtitle">Sammle Orte in ganz Europa</div>
+            <div class="pb-splash-percent"></div>
+        </div>
     </div>
 
     <div id="blazor-error-ui">
