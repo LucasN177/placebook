@@ -1,4 +1,5 @@
 @page "/list"
+@page "/list/{CountryCode}"
 @implements IDisposable
 @inject CategoryState CategoryState
 @inject VisitService Visits
@@ -6,7 +7,7 @@
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 
-<PageTitle>Liste – Placebook</PageTitle>
+<PageTitle>@(Country is null ? "Liste" : Countries.Name(Country)) – Placebook</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Medium" Class="pt-4 pb-8">
     @if (Category is null)
@@ -15,12 +16,45 @@
     }
     else
     {
+        @if (Country is not null)
+        {
+            @* Länderansicht: alle Orte eines Landes mit Fortschritt *@
+            <MudPaper Class="pa-3 mb-3" Elevation="1">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Href="list" Size="Size.Small"
+                                   aria-label="Zurück zu allen Ländern" />
+                    <MudText Typo="Typo.h6" Class="pb-ellipsis">@Countries.Name(Country)</MudText>
+                </MudStack>
+                @if (_countryTotal > 0)
+                {
+                    <MudText Typo="Typo.body2" Class="mt-1">
+                        <b>@_countryVisited.ToString("N0")</b> von @_countryTotal.ToString("N0") @Category.Name besucht
+                        (@FormatPercent(_countryVisited, _countryTotal))
+                    </MudText>
+                    <MudProgressLinear Value="@(100.0 * _countryVisited / _countryTotal)" Color="Color.Primary" Rounded="true"
+                                       Size="Size.Small" Class="mt-1" />
+                }
+                else if (Category.MissingCountries?.Contains(Country) == true)
+                {
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary mt-1">
+                        Für dieses Land sind noch keine @Category.Name abgerufen.
+                    </MudText>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary mt-1">
+                        In diesem Land gibt es keine @Category.Name.
+                    </MudText>
+                }
+            </MudPaper>
+        }
+
         <MudPaper Class="pa-3 mb-3 pb-list-header" Elevation="1">
             <MudStack Spacing="2">
                 <MudTextField T="string" Value="_search" ValueChanged="OnSearchChanged" Immediate="true" DebounceInterval="250"
-                              Placeholder="Suche nach Stadt, PLZ, Straße oder Land" Adornment="Adornment.Start"
-                              AdornmentIcon="@Icons.Material.Filled.Search" Variant="Variant.Outlined" Margin="Margin.Dense"
-                              Clearable="true" />
+                              Placeholder="@(Country is null ? "Suche nach Stadt, PLZ, Straße oder Land" : "Suche nach Stadt, PLZ oder Straße")"
+                              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Variant="Variant.Outlined"
+                              Margin="Margin.Dense" Clearable="true" />
                 <MudStack Row="true" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap" Spacing="2">
                     <MudChipSet T="VisitFilter" SelectedValue="_filter" SelectedValueChanged="OnFilterChanged"
                                 SelectionMode="SelectionMode.SingleSelection" CheckMark="false" Size="Size.Small">
@@ -32,34 +66,49 @@
                     <MudSelect T="PlaceSort" Value="_sort" ValueChanged="OnSortChangedAsync" Label="Sortierung" Dense="true"
                                Variant="Variant.Outlined" Margin="Margin.Dense" Style="min-width:180px; max-width:220px">
                         <MudSelectItem Value="PlaceSort.City">Ort (A–Z)</MudSelectItem>
-                        <MudSelectItem Value="PlaceSort.Country">Land</MudSelectItem>
+                        @if (Country is null)
+                        {
+                            <MudSelectItem Value="PlaceSort.Country">Land</MudSelectItem>
+                        }
                         <MudSelectItem Value="PlaceSort.Distance">Entfernung</MudSelectItem>
                     </MudSelect>
                 </MudStack>
                 <MudText Typo="Typo.body2" Class="mud-text-secondary">
-                    @_items.Count.ToString("N0") von @CategoryState.Places.Count.ToString("N0") @Category.Name
+                    @_items.Count.ToString("N0") von @(Country is null ? CategoryState.Places.Count.ToString("N0") : _countryTotal.ToString("N0")) @Category.Name
+                    @if (Country is null)
+                    {
+                        <span> · Tipp: Tippe auf ein Land, um nur dessen Orte zu sehen</span>
+                    }
                 </MudText>
             </MudStack>
         </MudPaper>
 
         @if (_items.Count == 0)
         {
-            <MudAlert Severity="Severity.Info" Variant="Variant.Text">Keine Orte gefunden.</MudAlert>
+            @if (Country is null || _countryTotal > 0)
+            {
+                <MudAlert Severity="Severity.Info" Variant="Variant.Text">Keine Orte gefunden.</MudAlert>
+            }
         }
         else
         {
             <MudPaper Elevation="1">
                 <Virtualize Items="_items" ItemSize="64" OverscanCount="10" Context="item">
-                    <div class="pb-list-row" @key="item.Place.Id">
+                    <div class="@($"pb-list-row{(item.IsVisited ? " pb-list-row-visited" : "")}")" @key="item.Place.Id">
                         <MudCheckBox T="bool" Value="item.IsVisited" ValueChanged="v => SetVisitedAsync(item.Place, v)"
                                      Color="Color.Primary" aria-label="Besucht" />
                         <div class="pb-list-text">
                             <MudText Typo="Typo.body1" Class="pb-ellipsis">
                                 @(item.Place.City ?? "Unbekannter Ort")
-                                <span class="mud-text-secondary">· @Countries.Name(item.Place.CountryCode)</span>
+                                @if (Country is null)
+                                {
+                                    <span class="mud-text-secondary">· </span>
+                                    <a class="pb-country-link" href="list/@item.Place.CountryCode"
+                                       title="Alle Orte in @Countries.Name(item.Place.CountryCode)">@Countries.Name(item.Place.CountryCode)</a>
+                                }
                             </MudText>
                             <MudText Typo="Typo.body2" Class="mud-text-secondary pb-ellipsis">
-                                @(item.Place.Name is { } name ? $"{name} · " : "")@(item.Place.Address ?? "Adresse unbekannt")
+                                @VisitInfo(item)@(item.Place.Name is { } name ? $"{name} · " : "")@(item.Place.Address ?? "Adresse unbekannt")
                             </MudText>
                         </div>
                         @if (item.DistanceKm is { } km)
@@ -76,12 +125,19 @@
 </MudContainer>
 
 @code {
+    /// <summary>ISO-Ländercode aus der Adresse (z. B. <c>/list/AT</c>); ohne Code werden alle Länder gezeigt.</summary>
+    [Parameter] public string? CountryCode { get; set; }
+
     private string? _search;
     private VisitFilter _filter = VisitFilter.All;
     private PlaceSort _sort = PlaceSort.City;
     private List<PlaceListItem> _items = [];
+    private int _countryTotal;
+    private int _countryVisited;
+    private bool _initialized;
 
     private Category? Category => CategoryState.Current;
+    private string? Country => string.IsNullOrWhiteSpace(CountryCode) ? null : CountryCode.Trim().ToUpperInvariant();
 
     protected override async Task OnInitializedAsync()
     {
@@ -90,14 +146,40 @@
         await Visits.EnsureLoadedAsync();
         await CategoryState.EnsureLoadedAsync();
         if (Browser.LastPosition is not null) _sort = PlaceSort.Distance;
+        _initialized = true;
         Refresh();
+    }
+
+    // Wechsel zwischen /list und /list/XY nutzt dieselbe Komponente – Liste dann neu aufbauen
+    protected override void OnParametersSet()
+    {
+        if (Country is not null && _sort == PlaceSort.Country) _sort = PlaceSort.City;
+        if (_initialized) Refresh();
     }
 
     private void Refresh()
     {
         if (Category is null) return;
         var visited = Visits.GetVisitedIds(Category.Id);
-        _items = PlaceQuery.Run(CategoryState.Places, visited.Contains, _search, _filter, _sort, Browser.LastPosition);
+        _items = PlaceQuery.Run(CategoryState.Places, visited.Contains, _search, _filter, _sort, Browser.LastPosition, Country);
+
+        if (Country is not null)
+        {
+            var inCountry = CategoryState.Places.Where(p => p.CountryCode == Country).ToList();
+            _countryTotal = inCountry.Count;
+            _countryVisited = inCountry.Count(p => visited.Contains(p.Id));
+        }
+    }
+
+    private string VisitInfo(PlaceListItem item) =>
+        item.IsVisited && Visits.GetVisit(Category!.Id, item.Place.Id)?.VisitedAt is { } date
+            ? $"Besucht am {date:d} · "
+            : "";
+
+    private static string FormatPercent(int part, int total)
+    {
+        var percent = 100.0 * part / total;
+        return percent.ToString(percent is > 0 and < 1 ? "0.00" : "0.#") + " %";
     }
 
     private void OnDataChanged() => InvokeAsync(() =>

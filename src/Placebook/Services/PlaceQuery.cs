@@ -13,17 +13,20 @@ public static class PlaceQuery
 {
     /// <param name="search">Leerzeichen-getrennte Begriffe; jeder muss in Name, Adresse, PLZ, Ort oder Land vorkommen.</param>
     /// <param name="position">Eigener Standort für Entfernungen; ohne Standort wird nach Entfernung nicht sortiert.</param>
+    /// <param name="countryCode">Nur Orte in diesem Land (Länderansicht); null für alle.</param>
     public static List<PlaceListItem> Run(
         IEnumerable<Place> places,
         Func<string, bool> isVisited,
         string? search,
         VisitFilter filter,
         PlaceSort sort,
-        GeoPosition? position)
+        GeoPosition? position,
+        string? countryCode = null)
     {
         var terms = (search ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
         var items = places
+            .Where(p => countryCode is null || p.CountryCode == countryCode)
             .Select(p => new PlaceListItem(p, isVisited(p.Id),
                 position is null ? null : Geo.DistanceKm(position.Lat, position.Lon, p.Lat, p.Lon)))
             .Where(i => filter switch
