@@ -3,6 +3,7 @@
 @implements IDisposable
 @inject CategoryState CategoryState
 @inject VisitService Visits
+@inject NavigationManager Navigation
 
 <PageTitle>Statistik – Placebook</PageTitle>
 
@@ -70,20 +71,26 @@
                     <tr>
                         <th>Land</th>
                         <th style="text-align:right">Besucht</th>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach (var country in _countries)
                     {
-                        <tr>
+                        @* Ganze Zeile führt zur Länderansicht; der Link bleibt für Tastatur und Screenreader *@
+                        <tr class="pb-click-row" @onclick="() => ShowCountry(country.CountryCode)">
                             <td style="width:100%">
-                                <div><a class="pb-country-link" href="list/@country.CountryCode" title="Alle Orte in diesem Land">@Countries.Name(country.CountryCode)</a></div>
+                                <div><a class="pb-country-link" href="list/@country.CountryCode" title="Alle Orte in diesem Land"
+                                        @onclick:stopPropagation="true">@Countries.Name(country.CountryCode)</a></div>
                                 <MudProgressLinear Value="country.Percent" Color="Color.Primary" Rounded="true" Size="Size.Small"
                                                    Class="mt-1" aria-label="@($"{FormatPercent(country.Percent)} besucht")" />
                             </td>
                             <td style="text-align:right; white-space:nowrap">
                                 <div>@country.Visited.ToString("N0") / @country.Total.ToString("N0")</div>
                                 <div class="mud-text-secondary" style="font-size:12px">@FormatPercent(country.Percent)</div>
+                            </td>
+                            <td class="pb-click-row-chevron">
+                                <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" Class="mud-text-secondary" />
                             </td>
                         </tr>
                     }
@@ -134,6 +141,8 @@
 
     private string BarHeight(int count) =>
         _maxMonth == 0 ? "0" : string.Create(CultureInfo.InvariantCulture, $"{100.0 * count / _maxMonth:0.#}%");
+
+    private void ShowCountry(string countryCode) => Navigation.NavigateTo($"list/{countryCode}");
 
     private static string FormatPercent(double percent) =>
         percent.ToString(percent is > 0 and < 1 ? "0.00" : "0.#") + " %";

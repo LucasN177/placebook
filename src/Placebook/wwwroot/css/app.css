@@ -365,3 +365,13 @@ code {
         color: var(--mud-palette-primary);
         border-bottom-style: solid;
     }
+
+.pb-click-row {
+    cursor: pointer;
+}
+
+.pb-click-row-chevron {
+    width: 24px;
+    padding-left: 0 !important;
+    padding-right: 4px !important;
+}
