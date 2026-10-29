@@ -15,6 +15,7 @@ ganz Europa und lässt sich bis auf Stadt- und Straßenebene zoomen.
 - ✅ Orte als besucht markieren – mit Datum und Notiz
 - 🗂️ Kategorien wählbar in der Kopfzeile; die App übernimmt die Farbe der gewählten Kategorie
 - 🔎 Listenansicht mit Suche (Stadt, PLZ, Straße, Land) und Sortierung nach Ort, Land oder Entfernung
+- 🏳️ Länderansicht: ein Klick auf ein Land (in der Liste oder Statistik) zeigt alle Orte dieses Landes mit Fortschritt und Besucht-Markierung (`/list/AT`)
 - 📊 Statistik: Fortschritt gesamt und pro Land, Besuche pro Monat
 - 📍 Eigener Standort & nächster noch nicht besuchter Ort
 - ☁️ Besuche in der Cloud (Supabase) – ohne Anmeldung über einen Sync-Code oder mit Konto (E-Mail + Passwort)

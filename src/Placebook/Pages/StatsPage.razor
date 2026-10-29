@@ -77,7 +77,7 @@
                     {
                         <tr>
                             <td style="width:100%">
-                                <div>@Countries.Name(country.CountryCode)</div>
+                                <div><a class="pb-country-link" href="list/@country.CountryCode" title="Alle Orte in diesem Land">@Countries.Name(country.CountryCode)</a></div>
                                 <MudProgressLinear Value="country.Percent" Color="Color.Primary" Rounded="true" Size="Size.Small"
                                                    Class="mt-1" aria-label="@($"{FormatPercent(country.Percent)} besucht")" />
                             </td>

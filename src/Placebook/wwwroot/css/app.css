@@ -346,3 +346,22 @@ code {
     color: var(--mud-palette-text-secondary);
     border-top: 1px solid var(--mud-palette-lines-default);
 }
+
+/* ---------- Länderansicht ---------- */
+
+/* Besuchte Orte: farbiger Streifen links zusätzlich zum Häkchen */
+.pb-list-row-visited {
+    box-shadow: inset 3px 0 0 var(--mud-palette-primary);
+}
+
+.pb-country-link {
+    color: var(--mud-palette-text-secondary);
+    text-decoration: none;
+    border-bottom: 1px dotted currentColor;
+}
+
+    .pb-country-link:hover,
+    .pb-country-link:focus-visible {
+        color: var(--mud-palette-primary);
+        border-bottom-style: solid;
+    }

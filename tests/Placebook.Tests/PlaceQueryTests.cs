@@ -39,6 +39,28 @@ public class PlaceQueryTests
     }
 
     [Fact]
+    public void CountryCode_LimitsToOneCountry()
+    {
+        var ids = Run(countryCode: "DE").Select(i => i.Place.Id);
+
+        Assert.Equal(["n1", "n4"], ids);
+    }
+
+    [Fact]
+    public void CountryCode_CombinesWithSearchAndFilter()
+    {
+        Assert.Equal("n1", Assert.Single(Run(search: "berlin", countryCode: "DE")).Place.Id);
+        Assert.Empty(Run(filter: VisitFilter.Visited, countryCode: "DE")); // besucht ist nur Wien (AT)
+        Assert.Equal("n2", Assert.Single(Run(filter: VisitFilter.Visited, countryCode: "AT")).Place.Id);
+    }
+
+    [Fact]
+    public void CountryCode_UnknownCountry_ReturnsNothing()
+    {
+        Assert.Empty(Run(countryCode: "PT"));
+    }
+
+    [Fact]
     public void Filter_SeparatesVisitedAndOpen()
     {
         Assert.Equal(["n2"], Run(filter: VisitFilter.Visited).Select(i => i.Place.Id));
@@ -63,6 +85,6 @@ public class PlaceQueryTests
     }
 
     private static List<PlaceListItem> Run(string? search = null, VisitFilter filter = VisitFilter.All,
-        PlaceSort sort = PlaceSort.City, GeoPosition? position = null) =>
-        PlaceQuery.Run(All, id => id == "n2", search, filter, sort, position);
+        PlaceSort sort = PlaceSort.City, GeoPosition? position = null, string? countryCode = null) =>
+        PlaceQuery.Run(All, id => id == "n2", search, filter, sort, position, countryCode);
 }
