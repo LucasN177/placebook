@@ -5,8 +5,8 @@
     "icon": "fastfood",
     "color": "#DA291C",
     "file": "places/mcdonalds.json",
-    "count": 8783,
-    "updatedAt": "2026-10-28"
+    "count": 8788,
+    "updatedAt": "2026-11-01"
   },
   {
     "id": "burgerking",
@@ -14,8 +14,8 @@
     "icon": "lunch_dining",
     "color": "#F5821F",
     "file": "places/burgerking.json",
-    "count": 4318,
-    "updatedAt": "2026-10-28"
+    "count": 4322,
+    "updatedAt": "2026-11-01"
   },
   {
     "id": "ikea",
@@ -24,7 +24,7 @@
     "color": "#0058A3",
     "file": "places/ikea.json",
     "count": 424,
-    "updatedAt": "2026-10-28"
+    "updatedAt": "2026-11-01"
   },
   {
     "id": "hospitals",
