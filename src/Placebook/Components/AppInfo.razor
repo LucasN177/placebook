@@ -1,0 +1,19 @@
+@inject IJSRuntime JS
+
+<div class="pb-app-info @Class">
+    @if (_version is not null)
+    {
+        <div>Placebook Version @_version</div>
+    }
+    <div>by Lucas Nagelsmann</div>
+</div>
+
+@code {
+    private string? _version;
+
+    [Parameter] public string? Class { get; set; }
+
+    // Version steht in wwwroot/js/version.js – dieselbe Quelle wie im Ladebildschirm
+    protected override async Task OnInitializedAsync() =>
+        _version = await JS.InvokeAsync<string>("placebookVersion");
+}

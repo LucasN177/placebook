@@ -149,7 +149,7 @@ code {
 
 .pb-map-page {
     position: fixed;
-    inset: var(--pb-appbar-height, 48px) 0 0 0;
+    inset: var(--pb-appbar-height, 48px) 0 var(--pb-bottom-nav-height) 0;
 }
 
 .pb-map {
@@ -338,14 +338,101 @@ code {
     height: 100%;
 }
 
-.pb-nav-footer {
-    margin-top: auto;
-    padding: 16px;
+.pb-app-info {
     font-size: 12px;
     line-height: 1.6;
     color: var(--mud-palette-text-secondary);
+}
+
+.pb-nav-footer {
+    margin-top: auto;
+    padding: 16px;
     border-top: 1px solid var(--mud-palette-lines-default);
 }
+
+/* ---------- Installierte App (PWA): Navigationsleiste unten statt Seitenmenü ---------- */
+
+/* .pb-standalone setzt index.html, wenn die App im Standalone-Modus läuft */
+:root {
+    --pb-bottom-nav-height: 0px;
+}
+
+.pb-bottom-nav,
+.pb-standalone-only {
+    display: none;
+}
+
+.pb-standalone {
+    --pb-bottom-nav-height: calc(56px + env(safe-area-inset-bottom));
+}
+
+    .pb-standalone .pb-drawer-toggle {
+        display: none;
+    }
+
+    .pb-standalone .pb-standalone-only {
+        display: block;
+    }
+
+    /* !important, weil MudMainContent in MainLayout die Klasse pb-0 trägt */
+    .pb-standalone .mud-main-content {
+        padding-bottom: var(--pb-bottom-nav-height) !important;
+    }
+
+    .pb-standalone .pb-bottom-nav {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        /* unter Drawern, damit das Detail-Sheet der Karte die Leiste überdeckt */
+        z-index: calc(var(--mud-zindex-drawer) - 1);
+        display: flex;
+        height: var(--pb-bottom-nav-height);
+        padding-bottom: env(safe-area-inset-bottom);
+        background: var(--mud-palette-surface);
+        border-top: 1px solid var(--mud-palette-lines-default);
+        box-shadow: 0 -1px 4px rgba(0, 0, 0, 0.08);
+    }
+
+.pb-bottom-nav-item {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    color: var(--mud-palette-text-secondary);
+    text-decoration: none;
+    font-size: 11px;
+    -webkit-tap-highlight-color: transparent;
+}
+
+    .pb-bottom-nav-item span {
+        max-width: 100%;
+        padding: 0 2px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .pb-bottom-nav-item.active {
+        color: var(--mud-palette-primary);
+        font-weight: 500;
+    }
+
+    /* Aktiver Punkt: Icon in einer farbigen "Pille" (Material-3-Stil) */
+    .pb-bottom-nav-item .mud-icon-root {
+        width: 56px;
+        height: 28px;
+        padding: 2px 16px;
+        border-radius: 14px;
+        transition: background-color 0.15s;
+    }
+
+    .pb-bottom-nav-item.active .mud-icon-root {
+        background-color: var(--mud-palette-primary-hover);
+    }
 
 /* ---------- Länderansicht ---------- */
 
