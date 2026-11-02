@@ -21,6 +21,14 @@
     <script type="importmap"></script>
     <script src="js/version.js"></script>
 
+    <!-- Als installierte App (PWA) gibt es unten eine Navigationsleiste statt des Seitenmenüs.
+         navigator.standalone deckt ältere iOS-Versionen ab. -->
+    <script>
+        if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+            document.documentElement.classList.add('pb-standalone');
+        }
+    </script>
+
     <!-- GitHub Pages SPA-Fallback: 404.html leitet Deep Links als "?/pfad" hierher um.
          Dieses Skript stellt die ursprüngliche URL wieder her, bevor der Blazor-Router startet. -->
     <script>

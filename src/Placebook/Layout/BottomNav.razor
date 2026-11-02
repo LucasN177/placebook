@@ -1,0 +1,23 @@
+@* Untere Navigationsleiste – nur in der installierten App (PWA) sichtbar, siehe .pb-standalone in app.css *@
+<nav class="pb-bottom-nav" aria-label="Hauptmenü">
+    <NavLink class="pb-bottom-nav-item" href="" Match="NavLinkMatch.All">
+        <MudIcon Icon="@Icons.Material.Filled.Map" />
+        <span>Karte</span>
+    </NavLink>
+    <NavLink class="pb-bottom-nav-item" href="list" Match="NavLinkMatch.Prefix">
+        <MudIcon Icon="@Icons.Material.Filled.List" />
+        <span>Liste</span>
+    </NavLink>
+    <NavLink class="pb-bottom-nav-item" href="stats" Match="NavLinkMatch.Prefix">
+        <MudIcon Icon="@Icons.Material.Filled.BarChart" />
+        <span>Statistik</span>
+    </NavLink>
+    <NavLink class="pb-bottom-nav-item" href="settings" Match="NavLinkMatch.Prefix">
+        <MudIcon Icon="@Icons.Material.Filled.Settings" />
+        <span>Einstellungen</span>
+    </NavLink>
+    <NavLink class="pb-bottom-nav-item" href="account" Match="NavLinkMatch.Prefix">
+        <MudIcon Icon="@Icons.Material.Filled.AccountCircle" />
+        <span>Konto</span>
+    </NavLink>
+</nav>
