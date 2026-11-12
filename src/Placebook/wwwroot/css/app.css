@@ -266,6 +266,19 @@ code {
     text-overflow: ellipsis;
 }
 
+/* Kategorie-Auswahl in der Kopfzeile: auf schmalen Bildschirmen kürzen statt die Symbole hinauszuschieben */
+.pb-category-menu,
+.pb-category-menu .mud-menu-activator,
+.pb-category-menu .mud-button-root,
+.pb-category-menu .mud-button-label {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.pb-category-menu {
+    flex-shrink: 1;
+}
+
 /* ---------- Statistik ---------- */
 
 .pb-stat {
@@ -452,3 +465,134 @@ code {
         color: var(--mud-palette-primary);
         border-bottom-style: solid;
     }
+
+/* ---------- Weihnachts-Theme (Kategorie mit "theme": "christmas") ---------- */
+
+/* Lichterkette: Draht in Bögen, darunter abwechselnd rote, goldene, grüne und blaue Lämpchen.
+   Zwei Hälften leuchten im Wechsel (::before / ::after). Klickdurchlässig, unter Drawern und Dialogen. */
+.pb-garland {
+    position: fixed;
+    top: var(--pb-appbar-height, 48px);
+    left: 0;
+    right: 0;
+    height: 24px;
+    pointer-events: none;
+    z-index: calc(var(--mud-zindex-drawer) - 2);
+    background: radial-gradient(24px 9px at 24px 0, transparent calc(100% - 2px), #1d3324 calc(100% - 1.5px), #1d3324 100%, transparent 100%) 0 0 / 48px 24px repeat-x;
+}
+
+    .pb-garland::before,
+    .pb-garland::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        animation: pb-twinkle 2.4s ease-in-out infinite alternate;
+    }
+
+    .pb-garland::before {
+        background:
+            radial-gradient(4px 6px at 24px 14px, #ff5252 99%, transparent 100%) 0 0 / 192px 24px repeat-x,
+            radial-gradient(circle at 24px 14px, rgba(255, 82, 82, 0.45) 5px, transparent 11px) 0 0 / 192px 24px repeat-x,
+            radial-gradient(4px 6px at 120px 14px, #ffd740 99%, transparent 100%) 0 0 / 192px 24px repeat-x,
+            radial-gradient(circle at 120px 14px, rgba(255, 215, 64, 0.45) 5px, transparent 11px) 0 0 / 192px 24px repeat-x;
+    }
+
+    .pb-garland::after {
+        background:
+            radial-gradient(4px 6px at 72px 14px, #69f0ae 99%, transparent 100%) 0 0 / 192px 24px repeat-x,
+            radial-gradient(circle at 72px 14px, rgba(105, 240, 174, 0.45) 5px, transparent 11px) 0 0 / 192px 24px repeat-x,
+            radial-gradient(4px 6px at 168px 14px, #40c4ff 99%, transparent 100%) 0 0 / 192px 24px repeat-x,
+            radial-gradient(circle at 168px 14px, rgba(64, 196, 255, 0.45) 5px, transparent 11px) 0 0 / 192px 24px repeat-x;
+        animation-delay: -1.2s;
+    }
+
+@keyframes pb-twinkle {
+    from { opacity: 1; }
+    to { opacity: 0.45; }
+}
+
+/* Schnee: zwei gekachelte Ebenen, die per transform nach unten wandern (GPU, kein Neuzeichnen).
+   Verschoben wird genau um eine Kachelhöhe, damit die Schleife nahtlos ist. */
+.pb-snow {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: calc(var(--mud-zindex-drawer) - 3);
+    /* Eisblau mit weichem Rand: sichtbar auf hellem Hintergrund, der Karte und im Dunkelmodus */
+    --pb-flake: rgba(218, 232, 248, 0.95);
+    --pb-flake-edge: rgba(70, 100, 140, 0.22);
+}
+
+.pb-snow-layer {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -400px;
+    height: calc(100% + 400px);
+    will-change: transform;
+    animation: pb-snowfall linear infinite;
+}
+
+.pb-snow-near {
+    animation-duration: 18s;
+    background-size: 400px 400px;
+    background-image:
+        radial-gradient(circle at 37px 52px, var(--pb-flake) 2.5px, var(--pb-flake-edge) 3.2px, transparent 4px),
+        radial-gradient(circle at 151px 18px, var(--pb-flake) 3px, var(--pb-flake-edge) 3.7px, transparent 4.5px),
+        radial-gradient(circle at 263px 97px, var(--pb-flake) 2.5px, var(--pb-flake-edge) 3.2px, transparent 4px),
+        radial-gradient(circle at 349px 211px, var(--pb-flake) 3px, var(--pb-flake-edge) 3.7px, transparent 4.5px),
+        radial-gradient(circle at 92px 248px, var(--pb-flake) 2.5px, var(--pb-flake-edge) 3.2px, transparent 4px),
+        radial-gradient(circle at 208px 330px, var(--pb-flake) 3px, var(--pb-flake-edge) 3.7px, transparent 4.5px),
+        radial-gradient(circle at 318px 372px, var(--pb-flake) 2.5px, var(--pb-flake-edge) 3.2px, transparent 4px),
+        radial-gradient(circle at 176px 160px, var(--pb-flake) 2.5px, var(--pb-flake-edge) 3.2px, transparent 4px),
+        radial-gradient(circle at 15px 312px, var(--pb-flake) 3px, var(--pb-flake-edge) 3.7px, transparent 4.5px),
+        radial-gradient(circle at 291px 268px, var(--pb-flake) 2.5px, var(--pb-flake-edge) 3.2px, transparent 4px),
+        radial-gradient(circle at 384px 120px, var(--pb-flake) 2.5px, var(--pb-flake-edge) 3.2px, transparent 4px);
+}
+
+.pb-snow-far {
+    animation-duration: 32s;
+    opacity: 0.7;
+    background-size: 400px 400px;
+    background-image:
+        radial-gradient(circle at 12px 130px, var(--pb-flake) 1.2px, var(--pb-flake-edge) 1.7px, transparent 2.3px),
+        radial-gradient(circle at 74px 352px, var(--pb-flake) 1.2px, var(--pb-flake-edge) 1.7px, transparent 2.3px),
+        radial-gradient(circle at 121px 191px, var(--pb-flake) 1.5px, var(--pb-flake-edge) 2px, transparent 2.6px),
+        radial-gradient(circle at 186px 64px, var(--pb-flake) 1.2px, var(--pb-flake-edge) 1.7px, transparent 2.3px),
+        radial-gradient(circle at 233px 282px, var(--pb-flake) 1.5px, var(--pb-flake-edge) 2px, transparent 2.6px),
+        radial-gradient(circle at 297px 158px, var(--pb-flake) 1.2px, var(--pb-flake-edge) 1.7px, transparent 2.3px),
+        radial-gradient(circle at 377px 32px, var(--pb-flake) 1.5px, var(--pb-flake-edge) 2px, transparent 2.6px),
+        radial-gradient(circle at 389px 305px, var(--pb-flake) 1.2px, var(--pb-flake-edge) 1.7px, transparent 2.3px);
+}
+
+@keyframes pb-snowfall {
+    from { transform: translate3d(0, 0, 0); }
+    to { transform: translate3d(0, 400px, 0); }
+}
+
+/* Schnee-Schalter in der Kopfzeile: ausgeschaltet gedimmt */
+.pb-snow-off {
+    opacity: 0.55;
+}
+
+/* Statistik-Kacheln mit Zuckerstangen-Streifen */
+.pb-theme-christmas .pb-stat {
+    position: relative;
+    overflow: hidden;
+}
+
+    .pb-theme-christmas .pb-stat::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: repeating-linear-gradient(135deg, #c62828 0 8px, #ffffff 8px 16px);
+    }
+
+@media (prefers-reduced-motion: reduce) {
+    .pb-snow { display: none; }
+    .pb-garland::before, .pb-garland::after { animation: none; }
+}

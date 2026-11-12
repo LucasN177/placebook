@@ -6,13 +6,14 @@
 @inject AccountDialogs AccountDialogs
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
+@inject IJSRuntime JS
 
 <MudThemeProvider @ref="_themeProvider" Theme="_theme" @bind-IsDarkMode="_isDarkMode" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
 
-<MudLayout>
+<MudLayout Class="@LayoutClass">
     <MudAppBar Elevation="1" Dense="true">
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" Class="pb-drawer-toggle"
                        OnClick="() => _drawerOpen = !_drawerOpen" aria-label="Menü" />
@@ -21,13 +22,13 @@
 
         @if (CategoryState.Current is { } current)
         {
-            <MudMenu AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" Class="ml-sm-4">
+            <MudMenu AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" Class="ml-sm-4 pb-category-menu">
                 <ActivatorContent>
                     <MudButton Color="Color.Inherit" Variant="Variant.Text" StartIcon="@CategoryIcons.For(current)"
                                EndIcon="@(CategoryState.Categories.Count > 1 ? Icons.Material.Filled.ArrowDropDown : null)"
                                Style="text-transform:none" aria-label="Kategorie wählen"
                                OnClick="@(e => context.ToggleAsync(e))">
-                        @current.Name
+                        <span class="pb-ellipsis">@current.Name</span>
                     </MudButton>
                 </ActivatorContent>
                 <ChildContent>
@@ -46,6 +47,14 @@
         {
             <MudTooltip Text="@SyncTooltip">
                 <MudIconButton Icon="@SyncIcon" Color="Color.Inherit" Href="settings" aria-label="@SyncTooltip" />
+            </MudTooltip>
+        }
+        @if (IsChristmas)
+        {
+            <MudTooltip Text="@(_snow ? "Schnee ausschalten" : "Schnee einschalten")">
+                <MudIconButton Icon="@Icons.Material.Filled.AcUnit" Color="Color.Inherit" OnClick="ToggleSnowAsync"
+                               Class="@(_snow ? null : "pb-snow-off")"
+                               aria-label="@(_snow ? "Schnee ausschalten" : "Schnee einschalten")" aria-pressed="@(_snow ? "true" : "false")" />
             </MudTooltip>
         }
         <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
@@ -70,6 +79,19 @@
         }
     </MudAppBar>
 
+    @if (IsChristmas)
+    {
+        @* Reine Deko: Lichterkette unter der Kopfzeile und leichter Schneefall (nur CSS, klickdurchlässig) *@
+        <div class="pb-garland" aria-hidden="true"></div>
+        @if (_snow)
+        {
+            <div class="pb-snow" aria-hidden="true">
+                <div class="pb-snow-layer pb-snow-far"></div>
+                <div class="pb-snow-layer pb-snow-near"></div>
+            </div>
+        }
+    }
+
     <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Variant="DrawerVariant.Temporary" Elevation="2">
         <NavMenu />
     </MudDrawer>
@@ -83,11 +105,17 @@
 
 @code {
     private const string DefaultColor = "#DA291C";
+    private const string SnowStorageKey = "placebook.snow";
 
-    private MudTheme _theme = CreateTheme(DefaultColor);
+    private MudTheme _theme = CreateTheme(null);
     private MudThemeProvider _themeProvider = default!;
     private bool _drawerOpen;
     private bool _isDarkMode;
+    private bool _snow = true;
+
+    private bool IsChristmas => CategoryState.Current?.IsChristmasTheme == true;
+
+    private string? LayoutClass => IsChristmas ? "pb-theme-christmas" : null;
 
     private string SyncIcon => Sync.Status switch
     {
@@ -121,6 +149,7 @@
         if (firstRender)
         {
             _isDarkMode = await _themeProvider.GetSystemDarkModeAsync();
+            _snow = await JS.InvokeAsync<string?>("localStorage.getItem", SnowStorageKey) != "off";
             StateHasChanged();
             await HandleAuthRedirectAsync();
         }
@@ -156,15 +185,43 @@
     /// <summary>Die App übernimmt die Farbe der gewählten Kategorie.</summary>
     private void OnCategoryChanged()
     {
-        _theme = CreateTheme(CategoryState.Current?.Color ?? DefaultColor);
+        _theme = CreateTheme(CategoryState.Current);
         StateHasChanged();
     }
 
-    private static MudTheme CreateTheme(string color) => new()
+    private async Task ToggleSnowAsync()
     {
-        PaletteLight = new PaletteLight { Primary = color, AppbarBackground = color },
-        PaletteDark = new PaletteDark { Primary = color }
-    };
+        _snow = !_snow;
+        await JS.InvokeVoidAsync("localStorage.setItem", SnowStorageKey, _snow ? "on" : "off");
+    }
+
+    private static MudTheme CreateTheme(Category? category)
+    {
+        if (category?.IsChristmasTheme == true)
+        {
+            // Tannengrün mit Weihnachtsrot; im Dunkelmodus ein nächtliches Blau, vor dem der Schnee leuchtet
+            return new MudTheme
+            {
+                PaletteLight = new PaletteLight
+                {
+                    Primary = category.Color, Secondary = "#C62828", AppbarBackground = "#1B5E20",
+                    Background = "#FBF7F0"
+                },
+                PaletteDark = new PaletteDark
+                {
+                    Primary = "#4CAF50", Secondary = "#EF5350", AppbarBackground = "#163A22",
+                    Background = "#0E1726", Surface = "#17233A", DrawerBackground = "#17233A"
+                }
+            };
+        }
+
+        var color = category?.Color ?? DefaultColor;
+        return new MudTheme
+        {
+            PaletteLight = new PaletteLight { Primary = color, AppbarBackground = color },
+            PaletteDark = new PaletteDark { Primary = color }
+        };
+    }
 
     public void Dispose()
     {

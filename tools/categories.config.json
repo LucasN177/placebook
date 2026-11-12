@@ -60,7 +60,8 @@
       "filter": "node[\"place\"~\"^(city|town)$\"][\"name\"]",
       "countries": ["DE"],
       "nameAsCity": true,
-      "mulledWine": true
+      "mulledWine": true,
+      "theme": "christmas"
     }
   ]
 }

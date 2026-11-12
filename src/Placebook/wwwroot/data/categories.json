@@ -112,6 +112,7 @@
     "count": 2313,
     "updatedAt": "2026-11-12",
     "itemName": "Weihnachtsmarkt",
-    "mulledWine": true
+    "mulledWine": true,
+    "theme": "christmas"
   }
 ]

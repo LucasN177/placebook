@@ -72,7 +72,7 @@ foreach (var category in categories)
     index.RemoveAll(c => c.Id == category.Id);
     index.Add(new CategoryIndexEntry(category.Id, category.Name, category.Icon, category.Color, file,
         places.Count, DateOnly.FromDateTime(DateTime.UtcNow), missing.Count > 0 ? missing : null, category.ItemName,
-        category.MulledWine ? true : null));
+        category.MulledWine ? true : null, category.Theme));
     // Reihenfolge aus der Config beibehalten
     index = index.OrderBy(c => config.Categories.FindIndex(x => x.Id == c.Id)).ToList();
     File.WriteAllText(indexPath, JsonSerializer.Serialize(index, Json.WriteIndented) + "\n", new UTF8Encoding(false));
@@ -128,13 +128,15 @@ namespace FetchPlaces
     /// <param name="NameAsCity">Die Orte sind Städte (place=city/town): Der OSM-Name wird zur Stadt, der Ortsname
     /// lautet "&lt;ItemName&gt; &lt;Stadt&gt;" (z. B. "Weihnachtsmarkt Köln").</param>
     /// <param name="MulledWine">Bei Besuchen lässt sich zusätzlich "Glühwein getrunken" angeben.</param>
+    /// <param name="Theme">Besonderes Erscheinungsbild der App, solange die Kategorie gewählt ist (z. B. "christmas").</param>
     record CategoryConfig(string Id, string Name, string Icon, string Color, string Filter,
         bool PerCountry = false, bool MergeSameName = false, string? DedupeTag = null, string? ItemName = null,
-        List<string>? Countries = null, bool NameAsCity = false, bool MulledWine = false);
+        List<string>? Countries = null, bool NameAsCity = false, bool MulledWine = false, string? Theme = null);
 
     /// <param name="MissingCountries">Nur bei Teildaten: Länder, deren Abfrage noch fehlt.</param>
     record CategoryIndexEntry(string Id, string Name, string Icon, string Color, string File, int Count, DateOnly UpdatedAt,
-        List<string>? MissingCountries = null, string? ItemName = null, bool? MulledWine = null);
+        List<string>? MissingCountries = null, string? ItemName = null, bool? MulledWine = null,
+        string? Theme = null);
 
     /// <summary>Kompaktes Ortsformat, siehe docs/IMPLEMENTATION_PLAN.md, Abschnitt 3.2.</summary>
     record Place(string Id, string? N, double Lat, double Lon, string? A, string? C, string? Z, string Cc)
