@@ -6,6 +6,24 @@ namespace Placebook.Tests;
 public class VisitStoreSerializationTests
 {
     [Fact]
+    public void MulledWine_IsKept_AndOmittedWhenNotSpecified()
+    {
+        var store = new VisitStore();
+        store.Visits["christmasmarkets"] = new()
+        {
+            ["n1"] = new Visit(new DateOnly(2026, 12, 5), null, MulledWine: true),
+            ["n2"] = new Visit(new DateOnly(2026, 12, 6), null)
+        };
+
+        var json = VisitService.Serialize(store);
+        var restored = VisitService.Deserialize(json)!;
+
+        Assert.True(restored.Visits["christmasmarkets"]["n1"].MulledWine);
+        Assert.Null(restored.Visits["christmasmarkets"]["n2"].MulledWine);
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(json, "mulledWine"));
+    }
+
+    [Fact]
     public void RoundTrip_KeepsVisits()
     {
         var store = new VisitStore();

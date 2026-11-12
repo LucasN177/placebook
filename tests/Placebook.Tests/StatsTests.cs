@@ -6,6 +6,20 @@ namespace Placebook.Tests;
 public class StatsTests
 {
     [Fact]
+    public void WithMulledWine_CountsOnlyExplicitYes()
+    {
+        Visit[] visits =
+        [
+            new(null, null, MulledWine: true),
+            new(null, null, MulledWine: true),
+            new(null, null, MulledWine: false),
+            new(null, null)
+        ];
+
+        Assert.Equal(2, Stats.WithMulledWine(visits));
+    }
+
+    [Fact]
     public void ByCountry_CountsAndOrdersVisitedCountriesFirst()
     {
         Place[] places =

@@ -31,6 +31,30 @@ public class SyncMergeTests
     }
 
     [Fact]
+    public void SelectRemote_AppliesNewerRemoteMulledWineChange()
+    {
+        var local = new Visit(new DateOnly(2026, 10, 1), null, T0);
+        var remote = new VisitChange("christmasmarkets", "n1",
+            new Visit(new DateOnly(2026, 10, 1), null, T0.AddMinutes(1), MulledWine: true), T0.AddMinutes(1));
+
+        Assert.True(Assert.Single(SyncMerge.SelectRemote([remote], (_, _) => local, [])).Visit!.MulledWine);
+    }
+
+    [Fact]
+    public void PushAndPullRows_CarryMulledWine()
+    {
+        var row = new VisitPushRow(Guid.Empty, null, "christmasmarkets", "n1", null, null, false, T0, true);
+        var json = JsonSerializer.Serialize(new List<VisitPushRow> { row with { MulledWine = null } }, PlacebookJsonContext.Default.ListVisitPushRow);
+        // Immer mitsenden – PostgREST verlangt bei Mehrfach-Inserts in jeder Zeile dieselben Spalten
+        Assert.Contains("\"mulled_wine\":null", json);
+
+        const string pull = """[{"category_id":"christmasmarkets","place_id":"n1","visited_at":null,"note":null,"mulled_wine":true,"deleted":false,"updated_at":"2026-10-28T10:00:00+00:00","synced_at":"2026-10-28T10:00:01+00:00"}]""";
+        var pulled = Assert.Single(JsonSerializer.Deserialize(pull, PlacebookJsonContext.Default.ListVisitPullRow)!);
+        Assert.True(pulled.ToChange().Visit!.MulledWine);
+        Assert.True(row.MulledWine);
+    }
+
+    [Fact]
     public void SelectRemote_IgnoresOlderRemoteChange()
     {
         var local = new Visit(null, "lokal", T0.AddMinutes(5));

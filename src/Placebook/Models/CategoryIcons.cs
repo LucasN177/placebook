@@ -13,6 +13,7 @@ public static class CategoryIcons
         "local_cafe" => Icons.Material.Filled.LocalCafe,
         "local_hospital" => Icons.Material.Filled.LocalHospital,
         "school" => Icons.Material.Filled.School,
+        "festival" => Icons.Material.Filled.Festival,
         _ => Icons.Material.Filled.Place
     };
 }

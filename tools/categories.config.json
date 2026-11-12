@@ -50,6 +50,17 @@
       "perCountry": true,
       "mergeSameName": true,
       "dedupeTag": "wikidata"
+    },
+    {
+      "id": "christmasmarkets",
+      "name": "Weihnachtsmärkte",
+      "itemName": "Weihnachtsmarkt",
+      "icon": "festival",
+      "color": "#2E7D32",
+      "filter": "node[\"place\"~\"^(city|town)$\"][\"name\"]",
+      "countries": ["DE"],
+      "nameAsCity": true,
+      "mulledWine": true
     }
   ]
 }

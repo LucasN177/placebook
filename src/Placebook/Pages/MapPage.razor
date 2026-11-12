@@ -81,6 +81,11 @@
             {
                 <MudDatePicker Label="Besucht am" Date="ToDateTime(_selectedVisit.VisitedAt)" DateChanged="SetVisitDateAsync"
                                Clearable="true" MaxDate="DateTime.Today" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                @if (Category.MulledWine)
+                {
+                    <MudCheckBox T="bool" Value="_selectedVisit.MulledWine == true" ValueChanged="SetMulledWineAsync"
+                                 Color="Color.Primary" Label="Glühwein getrunken (optional)" Class="ml-n2" />
+                }
                 <MudTextField T="string" Label="Notiz" Value="_selectedVisit.Note" ValueChanged="SetVisitNoteAsync"
                               Lines="3" Variant="Variant.Outlined" MaxLength="500" />
             }
@@ -255,6 +260,10 @@
 
     private Task SetVisitNoteAsync(string? note) =>
         SaveVisitAsync(_selectedVisit! with { Note = string.IsNullOrWhiteSpace(note) ? null : note.Trim() });
+
+    // Nicht angehakt = keine Angabe (null), damit die Angabe wirklich optional bleibt
+    private Task SetMulledWineAsync(bool drank) =>
+        SaveVisitAsync(_selectedVisit! with { MulledWine = drank ? true : null });
 
     private async Task SaveVisitAsync(Visit visit)
     {

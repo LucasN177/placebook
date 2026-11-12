@@ -46,7 +46,9 @@ foreach (var category in categories)
     List<string> missing;
     try
     {
-        (places, missing) = await overpass.FetchPlacesAsync(category, config.Region, fromCache);
+        // Eine Kategorie kann sich auf einzelne Länder beschränken (z. B. Weihnachtsmärkte nur in Deutschland)
+        var region = category.Countries is { Count: > 0 } countries ? config.Region with { Countries = countries } : config.Region;
+        (places, missing) = await overpass.FetchPlacesAsync(category, region, fromCache);
     }
     catch (InvalidOperationException ex)
     {
@@ -69,7 +71,8 @@ foreach (var category in categories)
     var index = LoadIndex(indexPath);
     index.RemoveAll(c => c.Id == category.Id);
     index.Add(new CategoryIndexEntry(category.Id, category.Name, category.Icon, category.Color, file,
-        places.Count, DateOnly.FromDateTime(DateTime.UtcNow), missing.Count > 0 ? missing : null, category.ItemName));
+        places.Count, DateOnly.FromDateTime(DateTime.UtcNow), missing.Count > 0 ? missing : null, category.ItemName,
+        category.MulledWine ? true : null));
     // Reihenfolge aus der Config beibehalten
     index = index.OrderBy(c => config.Categories.FindIndex(x => x.Id == c.Id)).ToList();
     File.WriteAllText(indexPath, JsonSerializer.Serialize(index, Json.WriteIndented) + "\n", new UTF8Encoding(false));
@@ -121,12 +124,17 @@ namespace FetchPlaces
     /// "wikidata" bei Universitäten: eigenständige Hochschulen haben einen Wikidata-Eintrag, einzelne Gebäude,
     /// Institute und Fakultäten meist nicht, und Campus-Teile derselben Hochschule teilen sich den Eintrag.</param>
     /// <param name="ItemName">Bezeichnung eines einzelnen Orts ohne eigenen Namen (z. B. "Krankenhaus"), sonst Name.</param>
+    /// <param name="Countries">Nur diese Länder abfragen statt der ganzen Region (z. B. ["DE"]).</param>
+    /// <param name="NameAsCity">Die Orte sind Städte (place=city/town): Der OSM-Name wird zur Stadt, der Ortsname
+    /// lautet "&lt;ItemName&gt; &lt;Stadt&gt;" (z. B. "Weihnachtsmarkt Köln").</param>
+    /// <param name="MulledWine">Bei Besuchen lässt sich zusätzlich "Glühwein getrunken" angeben.</param>
     record CategoryConfig(string Id, string Name, string Icon, string Color, string Filter,
-        bool PerCountry = false, bool MergeSameName = false, string? DedupeTag = null, string? ItemName = null);
+        bool PerCountry = false, bool MergeSameName = false, string? DedupeTag = null, string? ItemName = null,
+        List<string>? Countries = null, bool NameAsCity = false, bool MulledWine = false);
 
     /// <param name="MissingCountries">Nur bei Teildaten: Länder, deren Abfrage noch fehlt.</param>
     record CategoryIndexEntry(string Id, string Name, string Icon, string Color, string File, int Count, DateOnly UpdatedAt,
-        List<string>? MissingCountries = null, string? ItemName = null);
+        List<string>? MissingCountries = null, string? ItemName = null, bool? MulledWine = null);
 
     /// <summary>Kompaktes Ortsformat, siehe docs/IMPLEMENTATION_PLAN.md, Abschnitt 3.2.</summary>
     record Place(string Id, string? N, double Lat, double Lon, string? A, string? C, string? Z, string Cc)
@@ -334,6 +342,13 @@ namespace FetchPlaces
 
                 var id = type[0] + element.GetProperty("id").GetInt64().ToString(CultureInfo.InvariantCulture);
                 var name = Tag(tags, "name");
+                if (category.NameAsCity)
+                {
+                    if (name is null) continue;
+                    places.TryAdd(id, new Place(id, $"{category.ItemName ?? category.Name} {name}",
+                        Math.Round(lat, 5), Math.Round(lon, 5), null, name, Tag(tags, "postal_code"), country));
+                    continue;
+                }
                 string? dedupeKey = null;
                 if (category.DedupeTag is { } dedupeTag && (dedupeKey = Tag(tags, dedupeTag)) is null) continue;
                 var street = Tag(tags, "addr:street");

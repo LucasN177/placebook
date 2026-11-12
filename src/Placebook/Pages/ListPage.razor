@@ -108,7 +108,7 @@
                                 }
                             </MudText>
                             <MudText Typo="Typo.body2" Class="mud-text-secondary pb-ellipsis">
-                                @VisitInfo(item)@(item.Place.Name is { } name ? $"{name} · " : "")@(item.Place.Address ?? "Adresse unbekannt")
+                                @Details(item)
                             </MudText>
                         </div>
                         @if (item.DistanceKm is { } km)
@@ -171,10 +171,21 @@
         }
     }
 
-    private string VisitInfo(PlaceListItem item) =>
-        item.IsVisited && Visits.GetVisit(Category!.Id, item.Place.Id)?.VisitedAt is { } date
-            ? $"Besucht am {date:d} · "
-            : "";
+    /// <summary>Zweite Zeile: Besuchsdatum, Glühwein, Name und Adresse – soweit vorhanden.</summary>
+    private string Details(PlaceListItem item)
+    {
+        var parts = new List<string>();
+        if (item.IsVisited && Visits.GetVisit(Category!.Id, item.Place.Id) is { } visit)
+        {
+            if (visit.VisitedAt is { } date) parts.Add($"Besucht am {date:d}");
+            if (visit.MulledWine == true) parts.Add("mit Glühwein");
+        }
+        if (item.Place.Name is { } name) parts.Add(name);
+        // Bei Städten (z. B. Weihnachtsmärkten) gibt es keine Adresse – dann reicht der Name
+        if (item.Place.Address is { } address) parts.Add(address);
+        else if (item.Place.Name is null) parts.Add("Adresse unbekannt");
+        return string.Join(" · ", parts);
+    }
 
     private static string FormatPercent(int part, int total)
     {

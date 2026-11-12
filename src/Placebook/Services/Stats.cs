@@ -36,5 +36,8 @@ public static class Stats
             .ToList();
     }
 
+    /// <summary>Besuche, bei denen Glühwein getrunken wurde (ohne Angabe zählt nicht).</summary>
+    public static int WithMulledWine(IEnumerable<Visit> visits) => visits.Count(v => v.MulledWine == true);
+
     private static DateOnly FirstOfMonth(DateOnly date) => new(date.Year, date.Month, 1);
 }

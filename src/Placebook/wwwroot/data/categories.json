@@ -102,5 +102,16 @@
       "XK"
     ],
     "itemName": "Hochschule"
+  },
+  {
+    "id": "christmasmarkets",
+    "name": "Weihnachtsmärkte",
+    "icon": "festival",
+    "color": "#2E7D32",
+    "file": "places/christmasmarkets.json",
+    "count": 2313,
+    "updatedAt": "2026-11-12",
+    "itemName": "Weihnachtsmarkt",
+    "mulledWine": true
   }
 ]

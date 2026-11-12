@@ -12,7 +12,7 @@ ganz Europa und lässt sich bis auf Stadt- und Straßenebene zoomen.
 ## Features
 
 - 🗺️ Interaktive Karte (Leaflet + OpenStreetMap) mit Marker-Clustering; der Ring um jedes Cluster zeigt den Anteil besuchter Orte
-- ✅ Orte als besucht markieren – mit Datum und Notiz
+- ✅ Orte als besucht markieren – mit Datum und Notiz (bei Weihnachtsmärkten optional: Glühwein getrunken? 🍷)
 - 🗂️ Kategorien wählbar in der Kopfzeile; die App übernimmt die Farbe der gewählten Kategorie
 - 🔎 Listenansicht mit Suche (Stadt, PLZ, Straße, Land) und Sortierung nach Ort, Land oder Entfernung
 - 🏳️ Länderansicht: ein Klick auf ein Land (in der Liste oder Statistik) zeigt alle Orte dieses Landes mit Fortschritt und Besucht-Markierung (`/list/AT`)
@@ -32,6 +32,7 @@ ganz Europa und lässt sich bis auf Stadt- und Straßenebene zoomen.
 | IKEA | 424 | 31 | `brand:wikidata=Q54078` |
 | Krankenhäuser | 2.850 | 10 von 45 | `amenity=hospital` – *Teildaten, weitere Länder folgen* |
 | Universitäten | 1.929 | 26 von 45 | `amenity=university` mit `wikidata` – *Teildaten, weitere Länder folgen* |
+| Weihnachtsmärkte | 2.313 | nur DE | `place=city` und `place=town` – eine Stadt steht für ihren Weihnachtsmarkt; optional „Glühwein getrunken“ |
 
 Bei Teildaten zeigt die App einen Hinweis mit den noch fehlenden Ländern.
 
@@ -129,6 +130,10 @@ und öffnet einen Pull Request. Dafür muss unter *Settings → Actions → Gene
    - `"dedupeTag": "wikidata"` übernimmt nur Einträge mit diesem Tag und behält pro Wert einen – bei Universitäten
      trennt das eigenständige Hochschulen von Instituten, Fakultäten und Gebäuden.
    - `"itemName"` benennt Orte ohne eigenen Namen (z. B. „Krankenhaus“).
+   - `"countries": ["DE"]` beschränkt die Kategorie auf einzelne Länder statt der ganzen Region.
+   - `"nameAsCity": true` für Kategorien, deren Orte Städte sind (`place=city/town`): Der OSM-Name wird zur Stadt,
+     der Ort heißt „<itemName> <Stadt>“ (z. B. „Weihnachtsmarkt Köln“).
+   - `"mulledWine": true` blendet bei Besuchen die optionale Angabe „Glühwein getrunken“ ein (inkl. Statistik).
 2. Ein neues Icon in [`CategoryIcons.cs`](src/Placebook/Models/CategoryIcons.cs) eintragen.
 3. `dotnet run --project tools/FetchPlaces -- --category <id> --from-cache` ausführen.
 4. Erzeugte Datei und aktualisierte `categories.json` committen.
@@ -200,8 +205,9 @@ Unter **Konto** (Symbol oben rechts) kann man sich registrieren und anmelden (Su
 ### Supabase einrichten
 
 1. Projekt anlegen, im *SQL Editor* nacheinander einmal ausführen:
-   [`001_visits.sql`](supabase/migrations/001_visits.sql) (Sync-Code) und
-   [`002_account_visits.sql`](supabase/migrations/002_account_visits.sql) (Konten).
+   [`001_visits.sql`](supabase/migrations/001_visits.sql) (Sync-Code),
+   [`002_account_visits.sql`](supabase/migrations/002_account_visits.sql) (Konten) und
+   [`003_mulled_wine.sql`](supabase/migrations/003_mulled_wine.sql) (Glühwein-Angabe).
 2. *Authentication → URL Configuration*: **Site URL** `https://lucasn177.github.io/placebook/`, unter
    **Redirect URLs** `https://lucasn177.github.io/placebook/**` und `http://localhost:5118/**` eintragen.
    Dorthin führen die Links aus Bestätigungs- und „Passwort vergessen“-Mails zurück.

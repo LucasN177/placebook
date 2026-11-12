@@ -35,7 +35,7 @@ public static class SyncMerge
         {
             var local = getLocal(change.CategoryId, change.PlaceId);
             if (change.Visit is null && local is null) continue;
-            if (local is not null && change.Visit is not null && SameContent(local, change.Visit)) continue;
+            if (local is not null && change.Visit is not null && local.HasSameContent(change.Visit)) continue;
 
             var localUpdatedAt = local?.UpdatedAt ?? DateTimeOffset.MinValue;
             var pendingUpdatedAt = pendingByKey.GetValueOrDefault((change.CategoryId, change.PlaceId), DateTimeOffset.MinValue);
@@ -44,6 +44,4 @@ public static class SyncMerge
         }
         return result;
     }
-
-    private static bool SameContent(Visit a, Visit b) => a.VisitedAt == b.VisitedAt && a.Note == b.Note;
 }

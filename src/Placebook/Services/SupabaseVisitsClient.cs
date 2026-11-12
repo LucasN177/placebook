@@ -43,7 +43,8 @@ public sealed record VisitPushRow(
     [property: JsonPropertyName("visited_at")] DateOnly? VisitedAt,
     [property: JsonPropertyName("note")] string? Note,
     [property: JsonPropertyName("deleted")] bool Deleted,
-    [property: JsonPropertyName("updated_at")] DateTimeOffset UpdatedAt);
+    [property: JsonPropertyName("updated_at")] DateTimeOffset UpdatedAt,
+    [property: JsonPropertyName("mulled_wine")] bool? MulledWine = null);
 
 /// <summary>Zeile beim Abholen.</summary>
 public sealed record VisitPullRow(
@@ -53,10 +54,11 @@ public sealed record VisitPullRow(
     [property: JsonPropertyName("note")] string? Note,
     [property: JsonPropertyName("deleted")] bool Deleted,
     [property: JsonPropertyName("updated_at")] DateTimeOffset UpdatedAt,
-    [property: JsonPropertyName("synced_at")] DateTimeOffset SyncedAt)
+    [property: JsonPropertyName("synced_at")] DateTimeOffset SyncedAt,
+    [property: JsonPropertyName("mulled_wine")] bool? MulledWine = null)
 {
     public VisitChange ToChange() =>
-        new(CategoryId, PlaceId, Deleted ? null : new Visit(VisitedAt, Note, UpdatedAt), UpdatedAt);
+        new(CategoryId, PlaceId, Deleted ? null : new Visit(VisitedAt, Note, UpdatedAt, MulledWine), UpdatedAt);
 }
 
 /// <summary>
@@ -67,7 +69,7 @@ public sealed class SupabaseVisitsClient(HttpClient http, SupabaseOptions option
 {
     public const int PageSize = 1000;
 
-    private const string Columns = "category_id,place_id,visited_at,note,deleted,updated_at,synced_at";
+    private const string Columns = "category_id,place_id,visited_at,note,mulled_wine,deleted,updated_at,synced_at";
 
     public bool IsConfigured => options.IsConfigured;
 
@@ -77,7 +79,7 @@ public sealed class SupabaseVisitsClient(HttpClient http, SupabaseOptions option
         var rows = changes
             .Select(c => new VisitPushRow(
                 (target as SyncTarget.Code)?.Key, (target as SyncTarget.Account)?.UserId,
-                c.CategoryId, c.PlaceId, c.Visit?.VisitedAt, c.Visit?.Note, c.Visit is null, c.UpdatedAt))
+                c.CategoryId, c.PlaceId, c.Visit?.VisitedAt, c.Visit?.Note, c.Visit is null, c.UpdatedAt, c.Visit?.MulledWine))
             .ToList();
 
         var (table, ownerColumn) = Table(target);

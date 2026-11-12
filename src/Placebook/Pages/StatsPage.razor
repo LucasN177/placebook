@@ -23,13 +23,32 @@
                     </MudText>
                 </MudPaper>
             </MudItem>
-            <MudItem xs="6" sm="4">
-                <MudPaper Class="pa-4 pb-stat" Elevation="1">
-                    <MudText Typo="Typo.body2" Class="mud-text-secondary">Länder</MudText>
-                    <MudText Typo="Typo.h4"><b>@_countries.Count(c => c.Visited > 0)</b></MudText>
-                    <MudText Typo="Typo.body2" Class="mud-text-secondary">von @_countries.Count</MudText>
-                </MudPaper>
-            </MudItem>
+            @if (Category.MulledWine)
+            {
+                <MudItem xs="6" sm="4">
+                    <MudPaper Class="pa-4 pb-stat" Elevation="1">
+                        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                            <MudIcon Icon="@Icons.Material.Filled.WineBar" Size="Size.Small" Style="vertical-align:text-bottom" />
+                            Mit Glühwein
+                        </MudText>
+                        <MudText Typo="Typo.h4"><b>@_mulledWine.ToString("N0")</b></MudText>
+                        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                            von @_visitedTotal.ToString("N0") @(_visitedTotal == 1 ? "Besuch" : "Besuchen")@(_visitedTotal > 0 ? $" ({FormatPercent(100.0 * _mulledWine / _visitedTotal)})" : "")
+                        </MudText>
+                    </MudPaper>
+                </MudItem>
+            }
+            @* Bei Kategorien mit nur einem Land (z. B. Weihnachtsmärkte in Deutschland) sagt die Kachel nichts aus *@
+            @if (!Category.MulledWine || _countries.Count > 1)
+            {
+                <MudItem xs="6" sm="4">
+                    <MudPaper Class="pa-4 pb-stat" Elevation="1">
+                        <MudText Typo="Typo.body2" Class="mud-text-secondary">Länder</MudText>
+                        <MudText Typo="Typo.h4"><b>@_countries.Count(c => c.Visited > 0)</b></MudText>
+                        <MudText Typo="Typo.body2" Class="mud-text-secondary">von @_countries.Count</MudText>
+                    </MudPaper>
+                </MudItem>
+            }
             <MudItem xs="6" sm="4">
                 <MudPaper Class="pa-4 pb-stat" Elevation="1">
                     <MudText Typo="Typo.body2" Class="mud-text-secondary">Letzte 12 Monate</MudText>
@@ -99,6 +118,7 @@
     private int _maxMonth;
     private int _undated;
     private int _visitedTotal;
+    private int _mulledWine;
     private double _percentTotal;
 
     private Category? Category => CategoryState.Current;
@@ -129,6 +149,7 @@
         _maxMonth = _months.Max(m => m.Count);
         _undated = visits.Count(v => v.VisitedAt is null);
         _visitedTotal = visits.Count;
+        _mulledWine = Stats.WithMulledWine(visits);
         _percentTotal = CategoryState.Places.Count == 0 ? 0 : 100.0 * _visitedTotal / CategoryState.Places.Count;
     }
 

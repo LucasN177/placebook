@@ -91,7 +91,7 @@ public sealed class VisitService(IJSRuntime js, TimeProvider time)
         {
             foreach (var (placeId, visit) in visits.ToList())
             {
-                if (before.TryGetValue((categoryId, placeId), out var old) && SameContent(old, visit)) continue;
+                if (before.TryGetValue((categoryId, placeId), out var old) && old.HasSameContent(visit)) continue;
                 visits[placeId] = visit with { UpdatedAt = now };
                 changes.Add(new VisitChange(categoryId, placeId, visits[placeId], now));
             }
@@ -149,8 +149,6 @@ public sealed class VisitService(IJSRuntime js, TimeProvider time)
         }
         return result;
     }
-
-    private static bool SameContent(Visit a, Visit b) => a.VisitedAt == b.VisitedAt && a.Note == b.Note;
 
     private void Put(string categoryId, string placeId, Visit visit)
     {
